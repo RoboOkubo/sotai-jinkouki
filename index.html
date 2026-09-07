@@ -1,0 +1,708 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>窓帯塵劫記</title>
+<style>
+:root{
+  --ink:#0f131c; --ink2:#161b27; --ink3:#1d2433;
+  --line:#2a3142; --line2:#39435a;
+  --fg:#ece6da; --fg-dim:#9aa3b4;
+  --sun-soft:#f6d57e;
+  --acc:#e3bd72;
+}
+*{box-sizing:border-box;}
+html,body{margin:0;padding:0;}
+body{
+  background:var(--ink);
+  color:var(--fg);
+  font-family:"Yu Mincho","YuMincho","Hiragino Mincho ProN","MS PMincho",serif;
+  min-height:100vh;
+  display:flex;
+  flex-direction:column;
+  align-items:flex-start;
+  justify-content:flex-start;
+  gap:18px;
+  padding:20px 14px;
+}
+.card{
+  width:100%;
+  max-width:500px;
+  background:var(--ink2);
+  border:1px solid var(--line);
+  border-radius:14px;
+  padding:22px 20px 20px;
+}
+.appTitle{
+  margin:0 0 4px;
+  width:100%;
+  max-width:500px;
+  text-align:center;
+  font-size:1.3rem;
+  font-weight:600;
+  letter-spacing:.14em;
+  color:var(--sun-soft);
+}
+h2{
+  margin:0 0 16px;
+  text-align:center;
+  font-size:1.5rem;
+  font-weight:600;
+  letter-spacing:.12em;
+  color:var(--sun-soft);
+  padding-bottom:14px;
+  border-bottom:1px dashed var(--line2);
+}
+.row{
+  display:grid;
+  grid-template-columns:auto minmax(0,4fr) minmax(0,1fr);
+  align-items:center;
+  gap:10px;
+  padding:9px 0;
+  border-bottom:1px dotted var(--line);
+}
+.row:last-child{border-bottom:none;}
+.label{
+  color:var(--fg-dim);
+  font-size:.9rem;
+  white-space:nowrap;
+}
+.readout{
+  display:block;
+  grid-column:2 / 4;
+  font-family:ui-monospace,"SFMono-Regular",Consolas,"Liberation Mono",Menlo,monospace;
+  font-size:1.15rem;
+  color:var(--fg);
+  text-align:right;
+  white-space:normal;
+  word-break:break-all;
+}
+input[type=number]{
+  background:var(--ink3);
+  border:1px solid var(--line2);
+  color:var(--fg);
+  border-radius:6px;
+  padding:7px 8px;
+  font-family:ui-monospace,"SFMono-Regular",Consolas,"Liberation Mono",Menlo,monospace;
+  font-size:1rem;
+  width:100%;
+  min-width:0;
+  text-align:right;
+}
+input:focus{outline:1px solid var(--acc);}
+button{
+  background:var(--ink3);
+  border:1px solid var(--line2);
+  color:var(--fg);
+  border-radius:6px;
+  padding:7px 10px;
+  font-size:.85rem;
+  font-family:inherit;
+  cursor:pointer;
+  white-space:nowrap;
+}
+button:hover{border-color:var(--acc);color:var(--sun-soft);}
+button:active{transform:translateY(1px);}
+.distLeft{min-width:112px; font-size:.78rem;}
+.cycleBtn{min-width:0; font-size:.78rem; white-space:normal;}
+.unitCell{min-width:0; font-size:.78rem; color:var(--fg-dim);}
+.moneyMid{display:block; grid-column:2 / 4; width:100%;}
+.kinginRow{display:flex; flex-wrap:wrap; gap:4px;}
+.miniInput{flex:0 0 44px; min-width:0;}
+@media (max-width:360px){
+  .card{padding:18px 14px 16px;}
+  h2{font-size:1.3rem;}
+}
+</style>
+</head>
+<body>
+<h1 class="appTitle">窓帯塵劫記</h1>
+
+<div class="card">
+  <h2>尺度</h2>
+  <div id="rows-distance"></div>
+</div>
+
+<div class="card">
+  <h2>面積</h2>
+  <div id="rows-area"></div>
+</div>
+
+<div class="card">
+  <h2>量</h2>
+  <div id="rows-volume"></div>
+</div>
+
+<div class="card">
+  <h2>重さ</h2>
+  <div id="rows-weight"></div>
+</div>
+
+<div class="card">
+  <h2>両替</h2>
+  <div id="rows-money"></div>
+</div>
+
+<script>
+"use strict";
+
+/* ---------- 尺種（萬年時計より一字一句そのまま） ---------- */
+let shakuType='kane';
+const SHAKU_M={kane:0.303, kujira:0.303/0.8, gofuku:0.303*6/5};
+const SHAKU_NAME={kane:'曲尺',kujira:'鯨尺',gofuku:'呉服尺'};
+const SHAKU_SEQ=['kane','kujira','gofuku'];
+const _shM=()=>SHAKU_M[shakuType];
+
+/* ---------- 距離カードの単位（里・町・間・丈は曲尺基準固定、ユーザー指定） ---------- */
+const UNIT_SEQ=['ri','cho','ken','shaku','jo'];
+const UNIT_LABEL={ri:'里',cho:'町',ken:'間',shaku:'尺',jo:'丈'};
+const UNIT_F={ri:3926.88,cho:109.08,ken:1.818,jo:3.03};
+function unitF(u){ return u==='shaku' ? _shM() : UNIT_F[u]; }
+let distUnit='shaku';
+
+
+/* ---------- 行2 メートルモードの単位（m/km/mm/cm循環） ---------- */
+const METER_SEQ=['m','km','mm','cm'];
+const METER_F={m:1,km:1000,mm:0.001,cm:0.01};
+let meterUnit='m';
+
+/* ---------- 里法・丈法・英法の内訳表示（丸め誤差対策の1e6丸めが必須） ---------- */
+const RIHO=[['里',129600],['町',3600],['間',60],['尺',10],['寸',1]];
+const JOHO=[['疋',520],['端',260],['丈',100],['尺',10],['寸',1]];
+const INCH_M=0.025342314;   // 1インチ＝0.83638寸（ユーザー指定。現実の0.0254mとは異なる）
+const EIHO=[['マイル',63360],['フルロン',7920],['ロッド',198],['ヤード',36],['フート',12],['インチ',1]];
+
+/* ---------- 行2 ヤードモードの単位（英法モードと同じ寸経由の値。誤差回避のため直値） ---------- */
+const YARD_SEQ=['mile','furlong','rod','yard','foot','inch'];
+const YARD_LABEL={mile:'マイル',furlong:'フルロン',rod:'ロッド',yard:'ヤード',foot:'フート',inch:'インチ'};
+const YARD_F={mile:1605.68901504, furlong:200.71112688, rod:5.017778172, yard:0.912323304, foot:0.304107768, inch:INCH_M};
+let yardUnit='yard';
+
+function bunkatsu(m,units,toBase){
+  let r=Math.round(toBase(m)*1e6)/1e6;
+  const parts=[];
+  units.forEach(([nm,f],i)=>{
+    const last = i===units.length-1;
+    const n = last ? Math.floor(r) : Math.floor(r/f);
+    if(!last) r-=n*f;
+    if(n!==0) parts.push(n+nm);
+  });
+  return parts.length ? parts.join('') : '0'+units[units.length-1][0];
+}
+
+/* ---------- 量の英法（ガロン系。パイント基準で整数ネストのため既存bunkatsuを流用） ---------- */
+const PINT_ML=3.0325*180.39, QUART_ML=2*PINT_ML, GALLON_ML=4*QUART_ML, PECK_ML=2*GALLON_ML, BUSHEL_ML=4*PECK_ML;
+const VOL_EIHO_BREAK=[['フッセル',64],['ペッキ',16],['ガロン',8],['クオルト',2],['パイント',1]];
+const VOL_E_SEQ=['bushel','peck','gallon','quart','pint'];
+const VOL_E_LABEL={bushel:'フッセル',peck:'ペッキ',gallon:'ガロン',quart:'クオルト',pint:'パイント'};
+const VOL_E_F={bushel:BUSHEL_ML,peck:PECK_ML,gallon:GALLON_ML,quart:QUART_ML,pint:PINT_ML};
+
+/* ---------- 面積の英法（非整数ネストのため専用の分解関数を使用） ---------- */
+const SQSHAKU_M2=(991.736/300)/36, SQFT_M2=SQSHAKU_M2*1.0073, SQYD_M2=SQFT_M2*9,
+      SQROD_M2=SQYD_M2*30.25, ROOT_M2=SQROD_M2*40, ACRE_M2=ROOT_M2*4;
+const AREA_EIHO_BREAK=[['エーカー',ACRE_M2],['ルート',ROOT_M2],['平方ロッド',SQROD_M2],
+                       ['平方ヤード',SQYD_M2],['平方フート',SQFT_M2],['平方尺',SQSHAKU_M2]];
+const AREA_E_SEQ=['acre','root','sqrod','sqyd','sqft','sqshaku'];
+const AREA_E_LABEL={acre:'エーカー',root:'ルート',sqrod:'平方ロッド',sqyd:'平方ヤード',sqft:'平方フート',sqshaku:'平方尺'};
+const AREA_E_F={acre:ACRE_M2,root:ROOT_M2,sqrod:SQROD_M2,sqyd:SQYD_M2,sqft:SQFT_M2,sqshaku:SQSHAKU_M2};
+
+/* ---------- 重さの英法（ドラム基準で整数ネストのため既存bunkatsuを流用） ---------- */
+const DRAM_G=0.475*3.75, OZ_G=16*DRAM_G, LB_G=16*OZ_G, CWT_G=100*LB_G, TON_G=20*CWT_G;
+const WEIGHT_EIHO_BREAK=[['トン',512000],['ハンドレットウェート',25600],['ポンド',256],['ヲンス',16],['ドラム',1]];
+const WEIGHT_E_SEQ=['ton','cwt','lb','oz','dram'];
+const WEIGHT_E_LABEL={ton:'トン',cwt:'ハンドレットウェート',lb:'ポンド',oz:'ヲンス',dram:'ドラム'};
+const WEIGHT_E_F={ton:TON_G,cwt:CWT_G,lb:LB_G,oz:OZ_G,dram:DRAM_G};
+
+// 単位間が整数倍でない体系用：基準量から直接、大きい単位順に切り出す
+function bunkatsuBase(base,units){
+  let r=Math.round(base*1e12)/1e12;
+  const parts=[];
+  units.forEach(([nm,f])=>{
+    const n=Math.floor(Math.round(r/f*1e6)/1e6);
+    r-=n*f;
+    if(n!==0) parts.push(n+nm);
+  });
+  return parts.length ? parts.join('') : '0'+units[units.length-1][0];
+}
+
+/* ---------- 面積・量・重さ（ユーザー指定の換算比。一般値と異なるものを含むが改変しないこと） ---------- */
+const TRAD={
+  area:{
+    siLabel:'平米',
+    SI_SEQ:['㎡','km²','cm²','mm²'],
+    SI_F:{'㎡':1,'km²':1000000,'cm²':0.0001,'mm²':0.000001},
+    U_SEQ:['cho','tan','se','bu'],
+    U_LABEL:{cho:'町',tan:'反',se:'畝',bu:'歩（坪）'},
+    U_F:{cho:9917.36, tan:991.736, se:99.1736, bu:991.736/300},
+    BREAK:[['町',3000],['反',300],['畝',30],['歩',1]],
+    toBase:m=>m*300/991.736,       // 総歩数（この式の形を厳守）
+    defUnit:'bu',
+    row1TradLabel:'町法',
+    row3Label:'畝数',
+    eiho:{
+      breakdown:base=>bunkatsuBase(base,AREA_EIHO_BREAK),
+      U_SEQ:AREA_E_SEQ, U_LABEL:AREA_E_LABEL, U_F:AREA_E_F, defUnit:'sqft'
+    }
+  },
+  volume:{
+    siLabel:'ミリリットル',
+    SI_SEQ:['mL','L','kL'],
+    SI_F:{'mL':1,'L':1000,'kL':1000000},
+    U_SEQ:['koku','to','sho','go'],
+    U_LABEL:{koku:'石',to:'斗',sho:'升',go:'合'},
+    U_F:{koku:180390, to:18039, sho:1803.9, go:180.39},
+    BREAK:[['石',1000000],['斗',100000],['升',10000],['合',1000],['勺',100],['抄',10],['撮',1]],
+    toBase:m=>m*1000/180.39,       // 総撮数
+    defUnit:'sho',
+    row1TradLabel:'石法',
+    row3Label:'量数',
+    eiho:{
+      breakdown:base=>bunkatsu(base,VOL_EIHO_BREAK,m=>m/PINT_ML),
+      U_SEQ:VOL_E_SEQ, U_LABEL:VOL_E_LABEL, U_F:VOL_E_F, defUnit:'pint'
+    }
+  },
+  weight:{
+    siLabel:'グラム',
+    SI_SEQ:['g','kg','mg','t'],
+    SI_F:{'g':1,'kg':1000,'mg':0.001,'t':1000000},
+    U_SEQ:['kan','kin','ryo','monme'],
+    U_LABEL:{kan:'貫',kin:'斤',ryo:'両',monme:'匁'},
+    U_F:{kan:3750, kin:600, ryo:15, monme:3.75},   // 1斤=40両（ユーザー指定。一般の1斤=16両とは異なる）
+    BREAK:[['貫',1000000],['斤',160000],['両',4000],['匁',1000],['分',100],['厘',10],['毛',1]],
+    toBase:g=>g*1000/3.75,         // 総毛数
+    defUnit:'monme',
+    row1TradLabel:'衡法',
+    eiho:{
+      breakdown:base=>bunkatsu(base,WEIGHT_EIHO_BREAK,g=>g/DRAM_G),
+      U_SEQ:WEIGHT_E_SEQ, U_LABEL:WEIGHT_E_LABEL, U_F:WEIGHT_E_F, defUnit:'lb'
+    },
+    row3Modes:{
+      seq:['kinryo','kansu'],
+      label:{kinryo:'斤量',kansu:'衡数'},
+      groups:{
+        kinryo:{U_SEQ:['kin','ryo','monme'], defUnit:'monme'},
+        kansu:{U_SEQ:['kan','monme'], defUnit:'monme'}
+      }
+    }
+  }
+};
+
+function fmt(v){
+  if(!isFinite(v)) return '';
+  const a=Math.abs(v);
+  if(a===0) return '0';
+  if(a>=10000) return v.toFixed(0);
+  if(a>=1) return v.toFixed(2);
+  if(a>=0.001) return v.toFixed(5);
+  return v.toPrecision(3);
+}
+
+/* ---------- 状態（距離・面積・量・重さはそれぞれ独立） ---------- */
+const values={distance:1.0, area:1, volume:1, weight:1, money:1};
+
+/* ---------- DOM参照 ---------- */
+const el=id=>document.getElementById(id);
+const tradEls={};   // tradEls[cat] = {readout1,readout2,siInput,siBtn,eihoInput,eihoBtn,label5,tradInput,tradBtn}（面積・量・重さ用）
+const siUnit={area:'㎡', volume:'mL', weight:'g'};
+const tradUnit={area:TRAD.area.defUnit, volume:TRAD.volume.defUnit, weight:TRAD.weight.defUnit};
+const eihoUnit={area:TRAD.area.eiho.defUnit, volume:TRAD.volume.eiho.defUnit, weight:TRAD.weight.eiho.defUnit};
+const row3Mode={weight:TRAD.weight.row3Modes.seq[0]};   // row3Modesを持つカード（重さ）のみ使用
+
+/* ---------- 行5（伝統単位）の単位ヘルパー：row3Modesを持つカード（重さ）はグループ内のみ循環 ---------- */
+function row3Seq(cat){ const def=TRAD[cat]; return def.row3Modes ? def.row3Modes.groups[row3Mode[cat]].U_SEQ : def.U_SEQ; }
+
+/* ---------- 面積・量・重さ：伝統内訳・英法内訳・SI入力・英法入力・伝統単位入力の5行を常時表示（カードは独立） ---------- */
+function buildTradCard(cat){
+  const def=TRAD[cat];
+  const container=el('rows-'+cat);
+
+  const row1=document.createElement('div'); row1.className='row';
+  const label1=document.createElement('span'); label1.className='label distLeft'; label1.textContent=def.row1TradLabel;
+  const readout1=document.createElement('span'); readout1.className='readout';
+  row1.appendChild(label1); row1.appendChild(readout1);
+  container.appendChild(row1);
+
+  const row2=document.createElement('div'); row2.className='row';
+  const label2=document.createElement('span'); label2.className='label distLeft'; label2.textContent='英法';
+  const readout2=document.createElement('span'); readout2.className='readout';
+  row2.appendChild(label2); row2.appendChild(readout2);
+  container.appendChild(row2);
+
+  const row3=document.createElement('div'); row3.className='row';
+  const label3=document.createElement('span'); label3.className='label distLeft'; label3.textContent=def.siLabel;
+  const siInput=document.createElement('input'); siInput.type='number'; siInput.step='any';
+  const siBtn=document.createElement('button'); siBtn.type='button'; siBtn.className='cycleBtn';
+  siBtn.addEventListener('click',()=>{
+    const i=def.SI_SEQ.indexOf(siUnit[cat]);
+    siUnit[cat]=def.SI_SEQ[(i+1)%def.SI_SEQ.length];
+    updateTradCard(cat);
+  });
+  row3.appendChild(label3); row3.appendChild(siInput); row3.appendChild(siBtn);
+  container.appendChild(row3);
+  siInput.addEventListener('input',()=>{
+    const v=parseFloat(siInput.value);
+    if(isFinite(v)&&v>0) values[cat]=v*def.SI_F[siUnit[cat]];
+    updateTradCard(cat);
+  });
+
+  const row4=document.createElement('div'); row4.className='row';
+  const label4=document.createElement('span'); label4.className='label distLeft'; label4.textContent='英法';
+  const eihoInput=document.createElement('input'); eihoInput.type='number'; eihoInput.step='any';
+  const eihoBtn=document.createElement('button'); eihoBtn.type='button'; eihoBtn.className='cycleBtn';
+  eihoBtn.addEventListener('click',()=>{
+    const seq=def.eiho.U_SEQ;
+    const i=seq.indexOf(eihoUnit[cat]);
+    eihoUnit[cat]=seq[(i+1)%seq.length];
+    updateTradCard(cat);
+  });
+  row4.appendChild(label4); row4.appendChild(eihoInput); row4.appendChild(eihoBtn);
+  container.appendChild(row4);
+  eihoInput.addEventListener('input',()=>{
+    const v=parseFloat(eihoInput.value);
+    if(isFinite(v)&&v>0) values[cat]=v*def.eiho.U_F[eihoUnit[cat]];
+    updateTradCard(cat);
+  });
+
+  const row5=document.createElement('div'); row5.className='row';
+  let label5;
+  if(def.row3Modes){
+    label5=document.createElement('button'); label5.type='button'; label5.className='distLeft';
+    label5.addEventListener('click',()=>{
+      const seq=def.row3Modes.seq;
+      const i=seq.indexOf(row3Mode[cat]);
+      row3Mode[cat]=seq[(i+1)%seq.length];
+      tradUnit[cat]=def.row3Modes.groups[row3Mode[cat]].defUnit;
+      updateTradCard(cat);
+    });
+  }else{
+    label5=document.createElement('span'); label5.className='label distLeft'; label5.textContent=def.row3Label||'';
+  }
+  const tradInput=document.createElement('input'); tradInput.type='number'; tradInput.step='any';
+  const tradBtn=document.createElement('button'); tradBtn.type='button'; tradBtn.className='cycleBtn';
+  tradBtn.addEventListener('click',()=>{
+    const seq=row3Seq(cat);
+    const i=seq.indexOf(tradUnit[cat]);
+    tradUnit[cat]=seq[(i+1)%seq.length];
+    updateTradCard(cat);
+  });
+  row5.appendChild(label5); row5.appendChild(tradInput); row5.appendChild(tradBtn);
+  container.appendChild(row5);
+  tradInput.addEventListener('input',()=>{
+    const v=parseFloat(tradInput.value);
+    if(isFinite(v)&&v>0) values[cat]=v*def.U_F[tradUnit[cat]];
+    updateTradCard(cat);
+  });
+
+  tradEls[cat]={readout1,readout2,siInput,siBtn,eihoInput,eihoBtn,label5,tradInput,tradBtn};
+  updateTradCard(cat);
+}
+
+function updateTradCard(cat){
+  const def=TRAD[cat];
+  const state=tradEls[cat];
+  const active=document.activeElement;
+  const base=values[cat];
+
+  state.readout1.textContent = bunkatsu(base,def.BREAK,def.toBase);
+  state.readout2.textContent = def.eiho.breakdown(base);
+
+  if(active!==state.siInput) state.siInput.value=fmt(base/def.SI_F[siUnit[cat]]);
+  state.siBtn.textContent = siUnit[cat]+' ⇄';
+
+  if(active!==state.eihoInput) state.eihoInput.value=fmt(base/def.eiho.U_F[eihoUnit[cat]]);
+  state.eihoBtn.textContent = def.eiho.U_LABEL[eihoUnit[cat]]+' ⇄';
+
+  if(def.row3Modes) state.label5.textContent = def.row3Modes.label[row3Mode[cat]]+' ⇄';
+  if(active!==state.tradInput) state.tradInput.value=fmt(base/def.U_F[tradUnit[cat]]);
+  state.tradBtn.textContent = def.U_LABEL[tradUnit[cat]]+' ⇄';
+}
+
+/* ---------- 距離（圭表儀）：里法/丈法/英法・メートル・ヤード・単位選択の4行 ---------- */
+let distanceEls=null;
+function buildDistanceCard(){
+  const container=el('rows-distance');
+
+  const row1=document.createElement('div'); row1.className='row';
+  const riLabel=document.createElement('span'); riLabel.className='label distLeft'; riLabel.textContent='里法';
+  const riReadout=document.createElement('span'); riReadout.className='readout';
+  row1.appendChild(riLabel); row1.appendChild(riReadout);
+  container.appendChild(row1);
+
+  const row2=document.createElement('div'); row2.className='row';
+  const joLabel=document.createElement('span'); joLabel.className='label distLeft'; joLabel.textContent='丈法';
+  const joReadout=document.createElement('span'); joReadout.className='readout';
+  row2.appendChild(joLabel); row2.appendChild(joReadout);
+  container.appendChild(row2);
+
+  const row3=document.createElement('div'); row3.className='row';
+  const eiLabel=document.createElement('span'); eiLabel.className='label distLeft'; eiLabel.textContent='英法';
+  const eiReadout=document.createElement('span'); eiReadout.className='readout';
+  row3.appendChild(eiLabel); row3.appendChild(eiReadout);
+  container.appendChild(row3);
+
+  const row4=document.createElement('div'); row4.className='row';
+  const mLabel=document.createElement('span'); mLabel.className='label distLeft'; mLabel.textContent='メートル';
+  const mInput=document.createElement('input'); mInput.type='number'; mInput.step='any';
+  const meterUnitBtn=document.createElement('button'); meterUnitBtn.type='button'; meterUnitBtn.className='cycleBtn';
+  meterUnitBtn.addEventListener('click',()=>{
+    const i=METER_SEQ.indexOf(meterUnit);
+    meterUnit=METER_SEQ[(i+1)%METER_SEQ.length];
+    updateDistanceCard();
+  });
+  row4.appendChild(mLabel); row4.appendChild(mInput); row4.appendChild(meterUnitBtn);
+  container.appendChild(row4);
+  mInput.addEventListener('input',()=>{
+    const v=parseFloat(mInput.value);
+    if(isFinite(v)&&v>0) values.distance=v*METER_F[meterUnit];
+    updateDistanceCard();
+  });
+
+  const row5=document.createElement('div'); row5.className='row';
+  const yLabel=document.createElement('span'); yLabel.className='label distLeft'; yLabel.textContent='ヤード';
+  const yInput=document.createElement('input'); yInput.type='number'; yInput.step='any';
+  const yardUnitBtn=document.createElement('button'); yardUnitBtn.type='button'; yardUnitBtn.className='cycleBtn';
+  yardUnitBtn.addEventListener('click',()=>{
+    const i=YARD_SEQ.indexOf(yardUnit);
+    yardUnit=YARD_SEQ[(i+1)%YARD_SEQ.length];
+    updateDistanceCard();
+  });
+  row5.appendChild(yLabel); row5.appendChild(yInput); row5.appendChild(yardUnitBtn);
+  container.appendChild(row5);
+  yInput.addEventListener('input',()=>{
+    const v=parseFloat(yInput.value);
+    if(isFinite(v)&&v>0) values.distance=v*YARD_F[yardUnit];
+    updateDistanceCard();
+  });
+
+  const row6=document.createElement('div'); row6.className='row';
+  const leftCell=document.createElement('span'); leftCell.className='distLeft';
+  const shakuBtn=document.createElement('button'); shakuBtn.type='button';
+  shakuBtn.addEventListener('click',()=>{
+    const i=SHAKU_SEQ.indexOf(shakuType);
+    shakuType=SHAKU_SEQ[(i+1)%SHAKU_SEQ.length];
+    updateDistanceCard();
+  });
+  const shakuStatic=document.createElement('span'); shakuStatic.className='label'; shakuStatic.textContent='曲尺';
+  leftCell.appendChild(shakuBtn); leftCell.appendChild(shakuStatic);
+  const unitInput=document.createElement('input'); unitInput.type='number'; unitInput.step='any';
+  const unitBtn=document.createElement('button'); unitBtn.type='button'; unitBtn.className='cycleBtn';
+  unitBtn.addEventListener('click',()=>{
+    const i=UNIT_SEQ.indexOf(distUnit);
+    distUnit=UNIT_SEQ[(i+1)%UNIT_SEQ.length];
+    updateDistanceCard();
+  });
+  row6.appendChild(leftCell); row6.appendChild(unitInput); row6.appendChild(unitBtn);
+  container.appendChild(row6);
+  unitInput.addEventListener('input',()=>{
+    const v=parseFloat(unitInput.value);
+    if(isFinite(v)&&v>0) values.distance=v*unitF(distUnit);
+    updateDistanceCard();
+  });
+
+  distanceEls={riReadout,joReadout,eiReadout,mInput,meterUnitBtn,yInput,yardUnitBtn,shakuBtn,shakuStatic,unitInput,unitBtn};
+  updateDistanceCard();
+}
+
+function updateDistanceCard(){
+  const active=document.activeElement;
+  const base=values.distance;
+  const toShakuSun=m=>m/SHAKU_M.kane*10;
+
+  distanceEls.riReadout.textContent = bunkatsu(base,RIHO,toShakuSun);
+  distanceEls.joReadout.textContent = bunkatsu(base,JOHO,toShakuSun);
+  distanceEls.eiReadout.textContent = bunkatsu(base,EIHO,m=>m/INCH_M);
+
+  if(active!==distanceEls.mInput) distanceEls.mInput.value=fmt(base/METER_F[meterUnit]);
+  distanceEls.meterUnitBtn.textContent = meterUnit+' ⇄';
+
+  if(active!==distanceEls.yInput) distanceEls.yInput.value=fmt(base/YARD_F[yardUnit]);
+  distanceEls.yardUnitBtn.textContent = YARD_LABEL[yardUnit]+' ⇄';
+
+  if(active!==distanceEls.unitInput) distanceEls.unitInput.value=fmt(base/unitF(distUnit));
+  distanceEls.unitBtn.textContent=UNIT_LABEL[distUnit]+' ⇄';
+  const isShaku = distUnit==='shaku';
+  distanceEls.shakuBtn.style.display    = isShaku ? '' : 'none';
+  distanceEls.shakuStatic.style.display = isShaku ? 'none' : '';
+  distanceEls.shakuBtn.textContent=SHAKU_NAME[shakuType]+' ⇄';
+}
+
+/* ---------- 両替：銭→金銀/金銀→銭・省銭・調銭・金相場・銀相場の5行 ---------- */
+const ZENI_SEQ=['mon','kan'];
+const ZENI_LABEL={mon:'文',kan:'貫'};
+const ZENI_F={mon:1,kan:1000};
+let zeniUnit='mon';
+let choUnit='mon';   // 調銭欄の単位は省銭欄と独立
+
+const MONEY_MODE_SEQ=['cho','gin'];
+const MONEY_MODE_LABEL={cho:'銭→金銀',gin:'金銀→銭'};
+let moneyMode='cho';
+let kinRate=1000, ginRate=60;
+
+const R6=x=>Math.round(x*1e6)/1e6;
+function choToKingin(cho,kRate,gRate){
+  let r=R6(cho);
+  const ryo=Math.floor(R6(r/kRate));        r=R6(r-ryo*kRate);
+  const bu =Math.floor(R6(r/(kRate/4)));    r=R6(r-bu*(kRate/4));
+  const shu=Math.floor(R6(r/(kRate/16)));   r=R6(r-shu*(kRate/16));
+  const ginM=r/gRate;
+  return {ryo,bu,shu,ginM,remainder:r};
+}
+const gin2=v=>(Math.floor(Math.round(v*1e6)/1e6*100)/100).toFixed(2);   // 銀の内訳表示は厘まで（3桁目以降は切り捨て）
+function choText(cho,kRate,gRate){
+  const {ryo,bu,shu,ginM,remainder}=choToKingin(cho,kRate,gRate);
+  const kinPart=(ryo?ryo+'両':'')+(bu?bu+'分':'')+(shu?shu+'朱':'');
+  const ginPart=(remainder!==0)?'銀'+gin2(ginM)+'匁':'';
+  return (!kinPart&&!ginPart) ? '銀0匁'
+       : !kinPart ? ginPart
+       : !ginPart ? kinPart
+       : kinPart+'、'+ginPart;
+}
+
+let moneyEls=null;
+function buildMoneyCard(){
+  const container=el('rows-money');
+
+  const row1=document.createElement('div'); row1.className='row';
+  const modeBtn=document.createElement('button'); modeBtn.type='button'; modeBtn.className='distLeft';
+  modeBtn.addEventListener('click',()=>{
+    const i=MONEY_MODE_SEQ.indexOf(moneyMode);
+    moneyMode=MONEY_MODE_SEQ[(i+1)%MONEY_MODE_SEQ.length];
+    if(moneyMode==='gin') refreshGinFields();
+    updateMoneyCard();
+  });
+  const midCell=document.createElement('span'); midCell.className='moneyMid';
+  const readout=document.createElement('span'); readout.className='readout';
+  const kinginRow=document.createElement('div'); kinginRow.className='kinginRow';
+  function kinginSlot(unitChar,isInt){
+    const input=document.createElement('input'); input.type='number'; input.step=isInt?'1':'any'; input.className='miniInput';
+    const label=document.createElement('span'); label.className='label'; label.textContent=unitChar;
+    kinginRow.appendChild(input); kinginRow.appendChild(label);
+    return input;
+  }
+  const ryoInput=kinginSlot('両',true);
+  const buInput=kinginSlot('分',true);
+  const shuInput=kinginSlot('朱',true);
+  const ginInput=kinginSlot('匁',false);
+  midCell.appendChild(readout); midCell.appendChild(kinginRow);
+  row1.appendChild(modeBtn); row1.appendChild(midCell);
+  container.appendChild(row1);
+
+  const onKinginInput=()=>{
+    const val=inp=>{ const v=parseFloat(inp.value); return isFinite(v)?v:0; };
+    const ryo=val(ryoInput), bu=val(buInput), shu=val(shuInput), gin=val(ginInput);
+    const cho2=Math.round(ryo*kinRate+bu*(kinRate/4)+shu*(kinRate/16)+gin*ginRate);
+    values.money=Math.round(cho2/0.96);
+    updateMoneyCard();
+  };
+  ryoInput.addEventListener('input',onKinginInput);
+  buInput.addEventListener('input',onKinginInput);
+  shuInput.addEventListener('input',onKinginInput);
+  ginInput.addEventListener('input',onKinginInput);
+
+  const row2=document.createElement('div'); row2.className='row';
+  const label2=document.createElement('span'); label2.className='label distLeft'; label2.textContent='省銭';
+  const input=document.createElement('input'); input.type='number'; input.step='any';
+  const unitBtn=document.createElement('button'); unitBtn.type='button'; unitBtn.className='cycleBtn';
+  unitBtn.addEventListener('click',()=>{
+    const i=ZENI_SEQ.indexOf(zeniUnit);
+    zeniUnit=ZENI_SEQ[(i+1)%ZENI_SEQ.length];
+    updateMoneyCard();
+  });
+  row2.appendChild(label2); row2.appendChild(input); row2.appendChild(unitBtn);
+  container.appendChild(row2);
+  input.addEventListener('input',()=>{
+    const v=parseFloat(input.value);
+    if(isFinite(v)&&v>0) values.money=v*ZENI_F[zeniUnit];
+    updateMoneyCard();
+  });
+
+  const row3=document.createElement('div'); row3.className='row';
+  const label3=document.createElement('span'); label3.className='label distLeft'; label3.textContent='調銭';
+  const choInput=document.createElement('input'); choInput.type='number'; choInput.step='any';
+  const choBtn=document.createElement('button'); choBtn.type='button'; choBtn.className='cycleBtn';
+  choBtn.addEventListener('click',()=>{
+    const i=ZENI_SEQ.indexOf(choUnit);
+    choUnit=ZENI_SEQ[(i+1)%ZENI_SEQ.length];
+    updateMoneyCard();
+  });
+  row3.appendChild(label3); row3.appendChild(choInput); row3.appendChild(choBtn);
+  container.appendChild(row3);
+  choInput.addEventListener('input',()=>{
+    const v=parseFloat(choInput.value);
+    if(isFinite(v)&&v>0){
+      const choMon=v*ZENI_F[choUnit];
+      const rem=choMon%100;
+      values.money=Math.round((choMon-rem)/0.96+rem);
+    }
+    updateMoneyCard();
+  });
+
+  const row4=document.createElement('div'); row4.className='row';
+  const label4=document.createElement('span'); label4.className='label distLeft'; label4.textContent='金相場';
+  const kinInput=document.createElement('input'); kinInput.type='number'; kinInput.step='any'; kinInput.value='1000';
+  const kinUnitCell=document.createElement('span'); kinUnitCell.className='unitCell'; kinUnitCell.textContent='文';
+  row4.appendChild(label4); row4.appendChild(kinInput); row4.appendChild(kinUnitCell);
+  container.appendChild(row4);
+  kinInput.addEventListener('input',()=>{
+    const v=parseFloat(kinInput.value);
+    if(isFinite(v)&&v>0){ kinRate=v; if(moneyMode==='gin') refreshGinFields(); }
+    updateMoneyCard();
+  });
+
+  const row5=document.createElement('div'); row5.className='row';
+  const label5=document.createElement('span'); label5.className='label distLeft'; label5.textContent='銀相場';
+  const ginRateInput=document.createElement('input'); ginRateInput.type='number'; ginRateInput.step='any'; ginRateInput.value='60';
+  const ginUnitCell=document.createElement('span'); ginUnitCell.className='unitCell'; ginUnitCell.textContent='目';
+  row5.appendChild(label5); row5.appendChild(ginRateInput); row5.appendChild(ginUnitCell);
+  container.appendChild(row5);
+  ginRateInput.addEventListener('input',()=>{
+    const v=parseFloat(ginRateInput.value);
+    if(isFinite(v)&&v>0){ ginRate=v; if(moneyMode==='gin') refreshGinFields(); }
+    updateMoneyCard();
+  });
+
+  moneyEls={modeBtn,readout,kinginRow,ryoInput,buInput,shuInput,ginInput,input,unitBtn,choInput,choBtn,kinInput,ginRateInput};
+  refreshGinFields();
+  updateMoneyCard();
+}
+
+// モード切替時／レート変更時にのみ呼ぶ：4欄をvalues.moneyから再計算して書き戻す
+// （4欄そのものの編集時はonKinginInputがvalues.moneyを更新するのみで、4欄自体は書き換えない）
+function refreshGinFields(){
+  const cho=Math.floor(values.money*0.96);
+  const {ryo,bu,shu,ginM}=choToKingin(cho,kinRate,ginRate);
+  moneyEls.ryoInput.value=String(ryo);
+  moneyEls.buInput.value=String(bu);
+  moneyEls.shuInput.value=String(shu);
+  moneyEls.ginInput.value=fmt(ginM);
+}
+
+function updateMoneyCard(){
+  const active=document.activeElement;
+  const base=values.money;
+  const cho=Math.floor(base*0.96);
+
+  moneyEls.modeBtn.textContent = MONEY_MODE_LABEL[moneyMode]+' ⇄';
+  const isGin = moneyMode==='gin';
+  moneyEls.readout.style.display = isGin ? 'none' : '';
+  moneyEls.kinginRow.style.display = isGin ? '' : 'none';
+
+  if(!isGin) moneyEls.readout.textContent = choText(cho,kinRate,ginRate);
+
+  if(active!==moneyEls.input) moneyEls.input.value=fmt(base/ZENI_F[zeniUnit]);
+  moneyEls.unitBtn.textContent = ZENI_LABEL[zeniUnit]+' ⇄';
+
+  if(active!==moneyEls.choInput) moneyEls.choInput.value=fmt(cho/ZENI_F[choUnit]);
+  moneyEls.choBtn.textContent = ZENI_LABEL[choUnit]+' ⇄';
+
+  if(active!==moneyEls.kinInput) moneyEls.kinInput.value=kinRate;
+  if(active!==moneyEls.ginRateInput) moneyEls.ginRateInput.value=ginRate;
+}
+
+buildDistanceCard();
+Object.keys(TRAD).forEach(buildTradCard);
+buildMoneyCard();
+</script>
+</body>
+</html>
