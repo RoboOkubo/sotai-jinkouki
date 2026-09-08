@@ -141,6 +141,20 @@ button:active{transform:translateY(1px);}
 .guide ul{margin:6px 0; padding-left:1.2em;}
 .warnText{color:var(--sun-soft); font-size:.82rem;}
 .moneyMid{display:block; grid-column:2 / 4; width:100%;}
+.calcBox{margin-top:14px; padding-top:12px; border-top:1px dashed var(--line2);}
+.calcBox summary{cursor:pointer; color:var(--sun-soft); font-size:.85rem; letter-spacing:.06em; padding:2px 0 10px; list-style:none;}
+.calcBox summary::-webkit-details-marker{display:none;}
+.calcBox summary::before{content:'▸ ';}
+.calcBox[open] summary::before{content:'▾ ';}
+.calcBox .row{margin-top:8px;}
+.calcBox .row:first-of-type{margin-top:0;}
+.calcCatRow{display:flex; gap:6px; margin-bottom:10px;}
+.calcCatBtn{
+  flex:1; min-width:0; padding:10px 4px; border-radius:10px;
+  border:1px solid var(--line2); background:var(--ink3); color:var(--fg-dim);
+  font-family:inherit; font-size:.8rem; white-space:normal; cursor:pointer;
+}
+.calcCatBtn.active{ border-color:var(--sun-soft); color:var(--fg); }
 .kinginRow{display:flex; flex-direction:column; gap:4px;}
 .kinginLine{display:flex; flex-wrap:wrap; gap:4px; justify-content:flex-end; align-items:center;}
 .kinginName{font-size:.78rem; color:var(--fg-dim); margin-right:2px;}
@@ -249,13 +263,20 @@ const SHAKU_NAME={kane:'曲尺',kujira:'鯨尺',gofuku:'呉服尺'};
 const SHAKU_SEQ=['kane','kujira','gofuku'];
 const _shM=()=>SHAKU_M[shakuType];
 
+/* ---------- 間種：1間の長さの流儀（いずれも曲尺基準） ---------- */
+let kenType='ken';
+const KEN_M={ken:M_SHAKU*6, kyoma:M_SHAKU*6.5, tatami:M_SHAKU*5.8, kyodatami:M_SHAKU*6.3};
+const KEN_NAME={ken:'間',kyoma:'京間',tatami:'畳',kyodatami:'京畳'};
+const KEN_SEQ=['ken','kyoma','tatami','kyodatami'];
+
 /* ---------- 距離カードの単位（里・町・間・丈は曲尺基準固定、ユーザー指定） ---------- */
 const UNIT_SEQ=['ri','cho','ken','shaku','sun','jo'];
 const UNIT_LABEL={ri:'里',cho:'町',ken:'間',shaku:'尺',sun:'寸',jo:'丈'};
-const UNIT_F={ri:M_SHAKU*12960, cho:M_SHAKU*360, ken:M_SHAKU*6, jo:M_SHAKU*10};
+const UNIT_F={ri:M_SHAKU*12960, cho:M_SHAKU*360, jo:M_SHAKU*10};
 function unitF(u){
   if(u==='shaku') return _shM();
   if(u==='sun')   return _shM()/10;   // 1尺＝10寸（尺種に従う）
+  if(u==='ken')   return KEN_M[kenType];
   return UNIT_F[u];
 }
 let distUnit='shaku';
@@ -267,8 +288,8 @@ const METER_F={m:1,km:1000,mm:0.001,cm:0.01};
 let meterUnit='m';
 
 /* ---------- 里法・丈法・英法の内訳表示（丸め誤差対策の1e6丸めが必須） ---------- */
-const RIHO=[['里',129600],['町',3600],['間',60],['尺',10],['寸',1]];
-const JOHO=[['疋',520],['端',260],['丈',100],['尺',10],['寸',1]];
+const RIHO=[['里',1296000],['町',36000],['間',600],['尺',100],['寸',10],['分',1]];
+const JOHO=[['疋',5200],['端',2600],['丈',1000],['尺',100],['寸',10],['分',1]];
 const INCH_M=M_INCH;        // 1インチ＝0.83820寸
 const EIHO=[['マイル',63360],['フルロン',7920],['ロッド',198],['ヤード',36],['フート',12],['インチ',1]];
 
@@ -278,16 +299,23 @@ const YARD_LABEL={mile:'マイル',furlong:'フルロン',rod:'ロッド',yard:'
 const YARD_F={mile:M_INCH*63360, furlong:M_INCH*7920, rod:M_INCH*198, yard:M_INCH*36, foot:M_INCH*12, inch:M_INCH};
 let yardUnit='yard';
 
-function bunkatsu(m,units,toBase){
+/* 和の単位は分・合まで単位名で刻むため整数。英法は名の無い端数ゆえ小数第一位まで示す（dec=true） */
+const lastNum=r=>{ const v=Math.round(r*10)/10; return Number.isInteger(v)?v.toFixed(1):String(v); };
+
+function bunkatsu(m,units,toBase,dec){
   let r=Math.round(toBase(m)*1e6)/1e6;
   const parts=[];
   units.forEach(([nm,f],i)=>{
     const last = i===units.length-1;
-    const n = last ? Math.floor(r) : Math.floor(r/f);
-    if(!last) r-=n*f;
-    if(n!==0) parts.push(n+nm);
+    if(last){
+      if(dec){ if(Math.round(r*10)/10!==0) parts.push(lastNum(r)+nm); }
+      else   { const n=Math.floor(r); if(n!==0) parts.push(n+nm); }
+    } else {
+      const n=Math.floor(r/f); r-=n*f;
+      if(n!==0) parts.push(n+nm);
+    }
   });
-  return parts.length ? parts.join('') : '0'+units[units.length-1][0];
+  return parts.length ? parts.join('') : (dec?'0.0':'0')+units[units.length-1][0];
 }
 
 /* ---------- 量の英法（ガロン系。パイント基準で整数ネストのため既存bunkatsuを流用） ---------- */
@@ -298,13 +326,13 @@ const VOL_E_LABEL={bushel:'フッセル',peck:'ペッキ',gallon:'ガロン',qua
 const VOL_E_F={bushel:BUSHEL_ML,peck:PECK_ML,gallon:GALLON_ML,quart:QUART_ML,pint:PINT_ML};
 
 /* ---------- 面積の英法（非整数ネストのため専用の分解関数を使用） ---------- */
-const SQSHAKU_M2=M_SHAKU*M_SHAKU, SQFT_M2=Math.pow(M_INCH*12,2), SQYD_M2=SQFT_M2*9,
-      SQROD_M2=SQYD_M2*30.25, ROOT_M2=SQROD_M2*40, ACRE_M2=ROOT_M2*4;
+const SQFT_M2=Math.pow(M_INCH*12,2), SQYD_M2=SQFT_M2*9,
+      SQROD_M2=SQYD_M2*30.25, ROOT_M2=SQROD_M2*40, ACRE_M2=ROOT_M2*4, SQIN_M2=Math.pow(M_INCH,2);
 const AREA_EIHO_BREAK=[['エーカー',ACRE_M2],['ルート',ROOT_M2],['平方ロッド',SQROD_M2],
-                       ['平方ヤード',SQYD_M2],['平方フート',SQFT_M2],['平方尺',SQSHAKU_M2]];
-const AREA_E_SEQ=['acre','root','sqrod','sqyd','sqft','sqshaku'];
-const AREA_E_LABEL={acre:'エーカー',root:'ルート',sqrod:'平方ロッド',sqyd:'平方ヤード',sqft:'平方フート',sqshaku:'平方尺'};
-const AREA_E_F={acre:ACRE_M2,root:ROOT_M2,sqrod:SQROD_M2,sqyd:SQYD_M2,sqft:SQFT_M2,sqshaku:SQSHAKU_M2};
+                       ['平方ヤード',SQYD_M2],['平方フート',SQFT_M2],['平方インチ',SQIN_M2]];
+const AREA_E_SEQ=['acre','root','sqrod','sqyd','sqft','sqin'];
+const AREA_E_LABEL={acre:'エーカー',root:'ルート',sqrod:'平方ロッド',sqyd:'平方ヤード',sqft:'平方フート',sqin:'平方インチ'};
+const AREA_E_F={acre:ACRE_M2,root:ROOT_M2,sqrod:SQROD_M2,sqyd:SQYD_M2,sqft:SQFT_M2,sqin:SQIN_M2};
 
 /* ---------- 重さの英法（ドラム基準で整数ネストのため既存bunkatsuを流用） ---------- */
 const DRAM_G=G_LB/256, OZ_G=16*DRAM_G, LB_G=G_LB, CWT_G=112*LB_G, TON_G=20*CWT_G;
@@ -317,12 +345,17 @@ const WEIGHT_E_F={ton:TON_G,cwt:CWT_G,lb:LB_G,oz:OZ_G,dram:DRAM_G};
 function bunkatsuBase(base,units){
   let r=Math.round(base*1e12)/1e12;
   const parts=[];
-  units.forEach(([nm,f])=>{
-    const n=Math.floor(Math.round(r/f*1e6)/1e6);
-    r-=n*f;
-    if(n!==0) parts.push(n+nm);
+  units.forEach(([nm,f],i)=>{
+    const last = i===units.length-1;
+    if(last){
+      const q=r/f;
+      if(Math.round(q*10)/10!==0) parts.push(lastNum(q)+nm);
+    } else {
+      const n=Math.floor(Math.round(r/f*1e6)/1e6); r-=n*f;
+      if(n!==0) parts.push(n+nm);
+    }
   });
-  return parts.length ? parts.join('') : '0'+units[units.length-1][0];
+  return parts.length ? parts.join('') : '0.0'+units[units.length-1][0];
 }
 
 /* ---------- 面積・量・重さ（ユーザー指定の換算比。一般値と異なるものを含むが改変しないこと） ---------- */
@@ -334,8 +367,8 @@ const TRAD={
     U_SEQ:['cho','tan','se','bu'],
     U_LABEL:{cho:'町',tan:'反',se:'畝',bu:'歩（坪）'},
     U_F:{cho:M_TSUBO*3000, tan:M_TSUBO*300, se:M_TSUBO*30, bu:M_TSUBO},
-    BREAK:[['町',3000],['反',300],['畝',30],['歩',1]],
-    toBase:m=>m/M_TSUBO,           // 総歩数
+    BREAK:[['町',30000],['反',3000],['畝',300],['歩',10],['分',1]],
+    toBase:m=>m/M_TSUBO*10,        // 総分数（1歩＝10分）
     defUnit:'bu',
     row1TradLabel:'町法',
     row3Label:'畝数',
@@ -357,7 +390,7 @@ const TRAD={
     row1TradLabel:'石法',
     row3Label:'量数',
     eiho:{
-      breakdown:base=>bunkatsu(base,VOL_EIHO_BREAK,m=>m/PINT_ML),
+      breakdown:base=>bunkatsu(base,VOL_EIHO_BREAK,m=>m/PINT_ML,true),
       U_SEQ:VOL_E_SEQ, U_LABEL:VOL_E_LABEL, U_F:VOL_E_F, defUnit:'pint'
     }
   },
@@ -374,7 +407,7 @@ const TRAD={
     defUnit:'monme',
     row1TradLabel:'衡法',
     eiho:{
-      breakdown:base=>bunkatsu(base,WEIGHT_EIHO_BREAK,g=>g/DRAM_G),
+      breakdown:base=>bunkatsu(base,WEIGHT_EIHO_BREAK,g=>g/DRAM_G,true),
       U_SEQ:WEIGHT_E_SEQ, U_LABEL:WEIGHT_E_LABEL, U_F:WEIGHT_E_F, defUnit:'lb'
     },
     row3Modes:{
@@ -590,7 +623,13 @@ function buildDistanceCard(){
     updateDistanceCard();
   });
   const shakuStatic=document.createElement('span'); shakuStatic.className='label'; shakuStatic.textContent='曲尺';
-  leftCell.appendChild(shakuBtn); leftCell.appendChild(shakuStatic);
+  const kenBtn=document.createElement('button'); kenBtn.type='button';
+  kenBtn.addEventListener('click',()=>{
+    const i=KEN_SEQ.indexOf(kenType);
+    kenType=KEN_SEQ[(i+1)%KEN_SEQ.length];
+    updateDistanceCard();
+  });
+  leftCell.appendChild(shakuBtn); leftCell.appendChild(shakuStatic); leftCell.appendChild(kenBtn);
   const unitInput=document.createElement('input'); unitInput.type='number'; unitInput.step='any';
   const unitBtn=document.createElement('button'); unitBtn.type='button'; unitBtn.className='cycleBtn';
   unitBtn.addEventListener('click',()=>{
@@ -606,19 +645,19 @@ function buildDistanceCard(){
     updateDistanceCard();
   });
 
-  distanceEls={riReadout,joReadout,eiReadout,riReadoutv,joReadoutv,eiReadoutv,mInput,meterUnitBtn,yInput,yardUnitBtn,shakuBtn,shakuStatic,unitInput,unitBtn};
+  distanceEls={riReadout,joReadout,eiReadout,riReadoutv,joReadoutv,eiReadoutv,mInput,meterUnitBtn,yInput,yardUnitBtn,shakuBtn,shakuStatic,kenBtn,unitInput,unitBtn};
   updateDistanceCard();
 }
 
 function updateDistanceCard(){
   const active=document.activeElement;
   const base=values.distance;
-  const toSunKane   = m=>m/SHAKU_M.kane*10;    // 里法は曲尺基準
-  const toSunKujira = m=>m/SHAKU_M.kujira*10;  // 丈法は鯨尺基準
+  const toBunKane   = m=>m/SHAKU_M.kane*100;    // 里法は曲尺基準（総分数）
+  const toBunKujira = m=>m/SHAKU_M.kujira*100;  // 丈法は鯨尺基準（総分数）
 
-  distanceEls.riReadoutv.textContent = bunkatsu(base,RIHO,toSunKane);
-  distanceEls.joReadoutv.textContent = bunkatsu(base,JOHO,toSunKujira);
-  distanceEls.eiReadoutv.textContent = bunkatsu(base,EIHO,m=>m/INCH_M);
+  distanceEls.riReadoutv.textContent = bunkatsu(base,RIHO,toBunKane);
+  distanceEls.joReadoutv.textContent = bunkatsu(base,JOHO,toBunKujira);
+  distanceEls.eiReadoutv.textContent = bunkatsu(base,EIHO,m=>m/INCH_M,true);
 
   if(active!==distanceEls.mInput) distanceEls.mInput.value=fmt(base/METER_F[meterUnit]);
   distanceEls.meterUnitBtn.textContent = meterUnit+' ⇄';
@@ -629,9 +668,12 @@ function updateDistanceCard(){
   if(active!==distanceEls.unitInput) distanceEls.unitInput.value=fmt(base/unitF(distUnit));
   distanceEls.unitBtn.textContent=UNIT_LABEL[distUnit]+' ⇄';
   const isShaku = (distUnit==='shaku'||distUnit==='sun');
+  const isKen   = (distUnit==='ken');
   distanceEls.shakuBtn.style.display    = isShaku ? '' : 'none';
-  distanceEls.shakuStatic.style.display = isShaku ? 'none' : '';
+  distanceEls.kenBtn.style.display      = isKen   ? '' : 'none';
+  distanceEls.shakuStatic.style.display = (isShaku||isKen) ? 'none' : '';
   distanceEls.shakuBtn.textContent=SHAKU_NAME[shakuType]+' ⇄';
+  distanceEls.kenBtn.textContent=KEN_NAME[kenType]+' ⇄';
 }
 
 /* ---------- 両替：銭→金銀/金銀→銭・省銭・調銭・金相場・銀相場の5行 ---------- */
@@ -930,9 +972,9 @@ function buildHiniCard(){
     row.appendChild(b); return b;
   };
   const aimBtn=mkWide('求むるもの',()=>{ hiniAim=(hiniAim==='hini'?'kasa':'hini'); });
-  const srcBtn=mkWide('拠り所',()=>{ hiniSrc=(hiniSrc==='real'?'trad':'real'); hiniFixSel(); });
-  const targetBtn=mkWide('求むる品',()=>{ hiniTarget=hiniCycle(hiniTarget,hiniOther); });
-  const otherBtn =mkWide('交じり物',()=>{ hiniOther =hiniCycle(hiniOther,hiniTarget); });
+  const srcBtn=mkWide('基準',()=>{ hiniSrc=(hiniSrc==='real'?'trad':'real'); hiniFixSel(); });
+  const targetBtn=mkWide('対象物',()=>{ hiniTarget=hiniCycle(hiniTarget,hiniOther); });
+  const otherBtn =mkWide('混合物',()=>{ hiniOther =hiniCycle(hiniOther,hiniTarget); });
 
   const mkNum=(t,seq,labels,getU,setU,onVal)=>{
     const {row,lb}=rowOf(t);
@@ -954,7 +996,7 @@ function buildHiniCard(){
   });
   pctRow.row.appendChild(pctInput); pctRow.row.appendChild(pctUnit);
 
-  const vmBtn=mkWide('嵩の求め方',()=>{ const i=HINI_VM_SEQ.indexOf(hiniVMode); hiniVMode=HINI_VM_SEQ[(i+1)%HINI_VM_SEQ.length]; });
+  const vmBtn=mkWide('求嵩',()=>{ const i=HINI_VM_SEQ.indexOf(hiniVMode); hiniVMode=HINI_VM_SEQ[(i+1)%HINI_VM_SEQ.length]; });
   const vEl=mkNum('嵩',HV_SEQ,HV_LABEL,()=>hvUnit,u=>hvUnit=u,v=>hiniV=v*HV_F[hvUnit]);
   const dEls=[0,1,2].map(i=>mkNum('',HL_SEQ,HL_LABEL,()=>hlUnit,u=>hlUnit=u,v=>hiniD[i]=v*HL_F[hlUnit]));
 
@@ -1038,8 +1080,96 @@ function updateHiniCard(){
   });
 }
 
+/* ---------- 面積カードの計算欄（縦・横から面積を求め、他行へ反映） ---------- */
+const AC_KEN_SEQ=['ken','kyoma','tatami','kyodatami'];
+const AC_KEN_LABEL={ken:'間',kyoma:'京間',tatami:'畳',kyodatami:'京畳'};
+const AC_KEN_F={ken:M_SHAKU*6, kyoma:M_SHAKU*6.5, tatami:M_SHAKU*5.8, kyodatami:M_SHAKU*6.3};
+
+const AC_M_SEQ=['km','m','cm','mm'];
+const AC_M_LABEL={km:'km',m:'m',cm:'cm',mm:'㎜'};
+const AC_M_F={km:1000, m:1, cm:0.01, mm:0.001};
+
+const AC_FT_SEQ=['rod','yard','foot','inch'];
+const AC_FT_LABEL={rod:'ロッド',yard:'ヤード',foot:'フート',inch:'インチ'};
+const AC_FT_F={rod:YARD_F.rod, yard:YARD_F.yard, foot:YARD_F.foot, inch:YARD_F.inch};
+
+const AC_CATS={
+  ken:{seq:AC_KEN_SEQ, label:AC_KEN_LABEL, f:AC_KEN_F},
+  m  :{seq:AC_M_SEQ,   label:AC_M_LABEL,   f:AC_M_F},
+  ft :{seq:AC_FT_SEQ,  label:AC_FT_LABEL,  f:AC_FT_F}
+};
+const AC_CAT_SEQ=['ken','m','ft'];
+const AC_GENRE_LABEL={ken:'尺度',m:'米',ft:'英法'};
+
+let acCat='ken';
+let acSub={ken:'ken', m:'m', ft:'foot'};
+let areaCalcEls=null;
+
+function buildAreaCalcSection(){
+  const container=el('rows-area');
+  const details=document.createElement('details'); details.className='calcBox';
+  const summary=document.createElement('summary'); summary.textContent='計算';
+  const body=document.createElement('div');
+  details.appendChild(summary); details.appendChild(body);
+  container.appendChild(details);
+
+  const catRow=document.createElement('div'); catRow.className='calcCatRow';
+  const catBtns={};
+  AC_CAT_SEQ.forEach(cat=>{
+    const b=document.createElement('button'); b.type='button'; b.className='calcCatBtn';
+    b.addEventListener('click',()=>{
+      acCat=cat;
+      recalc();
+    });
+    catBtns[cat]=b;
+    catRow.appendChild(b);
+  });
+  body.appendChild(catRow);
+
+  function mkRow(labelText){
+    const row=document.createElement('div'); row.className='row';
+    const lb=document.createElement('span'); lb.className='label distLeft'; lb.textContent=labelText;
+    const inp=document.createElement('input'); inp.type='number'; inp.step='any';
+    const unitBtn=document.createElement('button'); unitBtn.type='button'; unitBtn.className='cycleBtn';
+    unitBtn.addEventListener('click',()=>{
+      const seq=AC_CATS[acCat].seq;
+      const i=seq.indexOf(acSub[acCat]);
+      acSub[acCat]=seq[(i+1)%seq.length];
+      recalc();
+    });
+    inp.addEventListener('input',recalc);
+    row.appendChild(lb); row.appendChild(inp); row.appendChild(unitBtn);
+    body.appendChild(row);
+    return {row,inp,unitBtn};
+  }
+  const tateEl=mkRow('縦');
+  const yokoEl=mkRow('横');
+
+  function recalc(){
+    const a=parseFloat(tateEl.inp.value), b=parseFloat(yokoEl.inp.value);
+    const f=AC_CATS[acCat].f[acSub[acCat]];
+    if(isFinite(a)&&a>0&&isFinite(b)&&b>0){
+      values.area=(a*f)*(b*f);   // ㎡
+      updateTradCard('area');
+    }
+    refresh();
+  }
+  function refresh(){
+    AC_CAT_SEQ.forEach(cat=>{
+      catBtns[cat].classList.toggle('active', cat===acCat);
+      catBtns[cat].textContent=AC_GENRE_LABEL[cat];
+    });
+    const curLabel=AC_CATS[acCat].label[acSub[acCat]]+' ⇄';
+    tateEl.unitBtn.textContent=curLabel;
+    yokoEl.unitBtn.textContent=curLabel;
+  }
+  areaCalcEls={tateEl,yokoEl,catBtns,refresh};
+  refresh();
+}
+
 buildDistanceCard();
 Object.keys(TRAD).forEach(buildTradCard);
+buildAreaCalcSection();
 buildMoneyCard();
 buildHiniCard();
 </script>
