@@ -699,7 +699,14 @@ function choToSho(cho){
 const MONEY_MODE_SEQ=['cho','gin'];
 const MONEY_MODE_LABEL={cho:'銭→金銀',gin:'金銀→銭'};
 let moneyMode='cho';
-let kinRate=1000, ginRate=60;
+let kinRate=1000;   // 文/両
+let ginRate=60;     // 目/両（金一両に換わる銀の目方）
+/* 金相場の分母：kinRateは常に文/両で保持し、表示時のみ分・朱に換算する */
+const KIN_DEN_SEQ=['ryo','bu','shu'];
+const KIN_DEN_LABEL={ryo:'文/両',bu:'文/分',shu:'文/朱'};
+const GIN_DEN_LABEL={ryo:'目/両',bu:'目/分',shu:'目/朱'};
+const KIN_DEN_F={ryo:1, bu:4, shu:16};   // 表示値×この数＝文/両
+let kinDen='ryo';
 
 const R6=x=>Math.round(x*1e6)/1e6;
 function choToKingin(cho,kRate,gRate){
@@ -707,7 +714,7 @@ function choToKingin(cho,kRate,gRate){
   const ryo=Math.floor(R6(r/kRate));        r=R6(r-ryo*kRate);
   const bu =Math.floor(R6(r/(kRate/4)));    r=R6(r-bu*(kRate/4));
   const shu=Math.floor(R6(r/(kRate/16)));   r=R6(r-shu*(kRate/16));
-  const ginM=r/gRate;
+  const ginM=r/(kRate/gRate);   // 銀1匁＝kRate/gRate 文
   return {ryo,bu,shu,ginM,remainder:r};
 }
 const gin2=v=>(Math.floor(Math.round(v*1e6)/1e6*100)/100).toFixed(2);   // 銀の内訳表示は厘まで（3桁目以降は切り捨て）
@@ -761,7 +768,7 @@ function buildMoneyCard(){
   const onKinginInput=()=>{
     const val=inp=>{ const v=parseFloat(inp.value); return isFinite(v)?v:0; };
     const ryo=val(ryoInput), bu=val(buInput), shu=val(shuInput), gin=val(ginInput);
-    const cho2=Math.round(ryo*kinRate+bu*(kinRate/4)+shu*(kinRate/16)+gin*ginRate);
+    const cho2=Math.round(ryo*kinRate+bu*(kinRate/4)+shu*(kinRate/16)+gin*(kinRate/ginRate));
     values.money=choToSho(cho2);
     updateMoneyCard();
   };
@@ -812,28 +819,38 @@ function buildMoneyCard(){
   const row4=document.createElement('div'); row4.className='row';
   const label4=document.createElement('span'); label4.className='label distLeft'; label4.textContent='金相場';
   const kinInput=document.createElement('input'); kinInput.type='number'; kinInput.step='any'; kinInput.value='1000';
-  const kinUnitCell=document.createElement('span'); kinUnitCell.className='unitCell'; kinUnitCell.textContent='文';
-  row4.appendChild(label4); row4.appendChild(kinInput); row4.appendChild(kinUnitCell);
+  const kinUnitBtn=document.createElement('button'); kinUnitBtn.type='button'; kinUnitBtn.className='cycleBtn';
+  kinUnitBtn.addEventListener('click',()=>{
+    const i=KIN_DEN_SEQ.indexOf(kinDen);
+    kinDen=KIN_DEN_SEQ[(i+1)%KIN_DEN_SEQ.length];
+    updateMoneyCard();
+  });
+  row4.appendChild(label4); row4.appendChild(kinInput); row4.appendChild(kinUnitBtn);
   container.appendChild(row4);
   kinInput.addEventListener('input',()=>{
     const v=parseFloat(kinInput.value);
-    if(isFinite(v)&&v>0){ kinRate=v; if(moneyMode==='gin') refreshGinFields(); }
+    if(isFinite(v)&&v>0){ kinRate=v*KIN_DEN_F[kinDen]; if(moneyMode==='gin') refreshGinFields(); }
     updateMoneyCard();
   });
 
   const row5=document.createElement('div'); row5.className='row';
   const label5=document.createElement('span'); label5.className='label distLeft'; label5.textContent='銀相場';
   const ginRateInput=document.createElement('input'); ginRateInput.type='number'; ginRateInput.step='any'; ginRateInput.value='60';
-  const ginUnitCell=document.createElement('span'); ginUnitCell.className='unitCell'; ginUnitCell.textContent='目';
-  row5.appendChild(label5); row5.appendChild(ginRateInput); row5.appendChild(ginUnitCell);
+  const ginUnitBtn=document.createElement('button'); ginUnitBtn.type='button'; ginUnitBtn.className='cycleBtn';
+  ginUnitBtn.addEventListener('click',()=>{
+    const i=KIN_DEN_SEQ.indexOf(kinDen);
+    kinDen=KIN_DEN_SEQ[(i+1)%KIN_DEN_SEQ.length];
+    updateMoneyCard();
+  });
+  row5.appendChild(label5); row5.appendChild(ginRateInput); row5.appendChild(ginUnitBtn);
   container.appendChild(row5);
   ginRateInput.addEventListener('input',()=>{
     const v=parseFloat(ginRateInput.value);
-    if(isFinite(v)&&v>0){ ginRate=v; if(moneyMode==='gin') refreshGinFields(); }
+    if(isFinite(v)&&v>0){ ginRate=v*KIN_DEN_F[kinDen]; if(moneyMode==='gin') refreshGinFields(); }
     updateMoneyCard();
   });
 
-  moneyEls={modeBtn,readout,kinginRow,ryoInput,buInput,shuInput,ginInput,input,unitBtn,choInput,choBtn,kinInput,ginRateInput};
+  moneyEls={modeBtn,readout,kinginRow,ryoInput,buInput,shuInput,ginInput,input,unitBtn,choInput,choBtn,kinInput,kinUnitBtn,ginRateInput,ginUnitBtn};
   refreshGinFields();
   updateMoneyCard();
 }
@@ -867,8 +884,10 @@ function updateMoneyCard(){
   if(active!==moneyEls.choInput) moneyEls.choInput.value=fmt(cho/ZENI_F[choUnit]);
   moneyEls.choBtn.textContent = ZENI_LABEL[choUnit]+' ⇄';
 
-  if(active!==moneyEls.kinInput) moneyEls.kinInput.value=kinRate;
-  if(active!==moneyEls.ginRateInput) moneyEls.ginRateInput.value=ginRate;
+  if(active!==moneyEls.kinInput) moneyEls.kinInput.value=fmt(kinRate/KIN_DEN_F[kinDen]);
+  moneyEls.kinUnitBtn.textContent=KIN_DEN_LABEL[kinDen]+' ⇄';
+  if(active!==moneyEls.ginRateInput) moneyEls.ginRateInput.value=fmt(ginRate/KIN_DEN_F[kinDen]);
+  moneyEls.ginUnitBtn.textContent=GIN_DEN_LABEL[kinDen]+' ⇄';
 }
 
 /* ================= 品位（純度）カード =================
