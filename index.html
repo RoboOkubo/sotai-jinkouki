@@ -1058,10 +1058,9 @@ function buildAngleCard(){
   const midCell=document.createElement('span'); midCell.className='moneyMid';
   const readout=document.createElement('span'); readout.className='readout';
   const tenkyuRow=document.createElement('div'); tenkyuRow.className='kinginRow';
-  function tkLine(nameChar){
+  function tkLine(){
     const line=document.createElement('div'); line.className='kinginLine';
-    const nm=document.createElement('span'); nm.className='kinginName'; nm.textContent=nameChar;
-    line.appendChild(nm); tenkyuRow.appendChild(line);
+    tenkyuRow.appendChild(line);
     return line;
   }
   function tkSlot(line,unitChar,isInt,isDMS){
@@ -1073,7 +1072,7 @@ function buildAngleCard(){
     line.appendChild(input); line.appendChild(label);
     return input;
   }
-  const tenLine=tkLine('天'), degLine=tkLine('度');
+  const tenLine=tkLine(), degLine=tkLine();
   const tenInput=tkSlot(tenLine,'天',true);
   const kyuInput=tkSlot(tenLine,'宮',true);
   const doInput =tkSlot(degLine,'度',true,true);
