@@ -4,12 +4,12 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>携帯塵劫記</title>
-<meta name="description" content="尺貫法とヤード・ポンド法を行き来する単位換算。尺度・面積・量・重さ・両替、および目方と嵩から金銀の品位を割り出す品定めを収める。">
+<meta name="description" content="尺貫法とヤード・ポンド法を行き来する単位換算。尺度・面積・角度・量・重さ・両替を収める。">
 <meta name="theme-color" content="#0f131c">
 <meta name="color-scheme" content="dark">
 <meta property="og:type" content="website">
 <meta property="og:title" content="携帯塵劫記">
-<meta property="og:description" content="尺貫法とヤード・ポンド法を行き来する単位換算。九六銭の両替と、金銀の品位を量る法を収める。">
+<meta property="og:description" content="尺貫法とヤード・ポンド法を行き来する単位換算。九六銭の両替と、天宮の角度を収める。">
 <meta property="og:url" content="https://robookubo.github.io/sotai-jinkouki/">
 <meta property="og:locale" content="ja_JP">
 <meta name="twitter:card" content="summary">
@@ -54,6 +54,18 @@ body{
   letter-spacing:.14em;
   color:var(--sun-soft);
 }
+.toc{
+  width:100%; max-width:500px; margin:10px 0 22px;
+  display:flex; flex-wrap:wrap; justify-content:center; gap:6px;
+}
+.toc button{
+  flex:0 0 auto; padding:7px 14px; border-radius:999px;
+  border:1px solid var(--line2); background:var(--ink2);
+  color:var(--fg-dim); font-family:inherit; font-size:.8rem; letter-spacing:.06em;
+  cursor:pointer;
+}
+.toc button:hover,.toc button:focus{ border-color:var(--sun-soft); color:var(--fg); }
+.card{ scroll-margin-top:14px; }
 h2{
   margin:0 0 16px;
   text-align:center;
@@ -88,7 +100,7 @@ h2{
   white-space:normal;
   word-break:break-all;
 }
-input[type=number]{
+input[type=number],input[type=text]{
   background:var(--ink3);
   border:1px solid var(--line2);
   color:var(--fg);
@@ -99,6 +111,12 @@ input[type=number]{
   width:100%;
   min-width:0;
   text-align:right;
+  appearance:textfield;
+  -moz-appearance:textfield;
+}
+input[type=number]::-webkit-outer-spin-button,
+input[type=number]::-webkit-inner-spin-button{
+  -webkit-appearance:none; margin:0;
 }
 input:focus{outline:1px solid var(--acc);}
 button{
@@ -119,7 +137,7 @@ button:active{transform:translateY(1px);}
 .unitCell{min-width:0; font-size:.78rem; color:var(--fg-dim);}
 .wideBtn{grid-column:2 / 4;}
 .guide{
-  width:100%; max-width:500px; margin:0 auto 28px;
+  width:100%; max-width:500px; margin:0 0 28px;
   background:var(--ink2); border:1px solid var(--line); border-radius:10px;
   padding:0 16px; color:var(--fg-dim); font-size:.82rem; line-height:1.85;
 }
@@ -155,57 +173,71 @@ button:active{transform:translateY(1px);}
   font-family:inherit; font-size:.8rem; white-space:normal; cursor:pointer;
 }
 .calcCatBtn.active{ border-color:var(--sun-soft); color:var(--fg); }
+.calcNote{font-size:.72rem; color:var(--fg-dim); margin:12px 0 0; line-height:1.75;}
 .kinginRow{display:flex; flex-direction:column; gap:4px;}
 .kinginLine{display:flex; flex-wrap:wrap; gap:4px; justify-content:flex-end; align-items:center;}
 .kinginName{font-size:.78rem; color:var(--fg-dim); margin-right:2px;}
-.miniInput{flex:0 0 44px; min-width:0;}
-.ginInput{flex:0 0 72px;}
+.miniInput{flex:0 0 54px; min-width:0; padding-left:5px; padding-right:5px;}
+.ginInput{flex:0 0 78px;}
 @media (max-width:360px){
   .card{padding:18px 14px 16px;}
   h2{font-size:1.3rem;}
+  .miniInput{flex:0 0 46px; font-size:.92rem;}
+  .ginInput{flex:0 0 64px; font-size:.92rem;}
+  .kinginName{margin-right:0;}
+  .kinginLine{gap:3px;}
 }
 </style>
 </head>
 <body>
 <h1 class="appTitle">携帯塵劫記</h1>
 
-<div class="card">
+<nav class="toc">
+  <button type="button" data-go="sec-distance">尺度</button>
+  <button type="button" data-go="sec-area">面積</button>
+  <button type="button" data-go="sec-angle">角度</button>
+  <button type="button" data-go="sec-volume">量</button>
+  <button type="button" data-go="sec-weight">重さ</button>
+  <button type="button" data-go="sec-money">両替</button>
+</nav>
+
+<div class="card" id="sec-distance">
   <h2>尺度</h2>
   <div id="rows-distance"></div>
 </div>
 
-<div class="card">
+<div class="card" id="sec-area">
   <h2>面積</h2>
   <div id="rows-area"></div>
 </div>
 
-<div class="card">
+<div class="card" id="sec-angle">
+  <h2>角度</h2>
+  <div id="rows-angle"></div>
+</div>
+
+<div class="card" id="sec-volume">
   <h2>量</h2>
   <div id="rows-volume"></div>
 </div>
 
-<div class="card">
+<div class="card" id="sec-weight">
   <h2>重さ</h2>
   <div id="rows-weight"></div>
 </div>
 
-<div class="card">
+<div class="card" id="sec-money">
   <h2>両替</h2>
   <div id="rows-money"></div>
 </div>
 
-<div class="card">
-  <h2>品位</h2>
-  <div id="rows-hini"></div>
-</div>
-
 <details class="guide">
-<summary>凡例・拠り所</summary>
+<summary>凡例・方式</summary>
 <div class="gBody">
 
 <p>本表の換算はすべて現行の国際基準に依っています。丸めた近似値は用いず、定義値から算び出しているため、いずれの単位も誤差を含みません。</p>
 
-<h3>尺貫法の拠り所</h3>
+<h3>尺貫法の方式</h3>
 <table>
 <tr><td>尺</td><td>10/33 m</td><td>明治二十四年度量衡法。三十三尺を十メートルとする</td></tr>
 <tr><td>坪</td><td>400/121 ㎡</td><td>六尺四方。一間は20/11 m</td></tr>
@@ -222,7 +254,7 @@ button:active{transform:translateY(1px);}
 </table>
 <p>いずれも一斤は百六十匁（600g）、一貫は千匁（3750g）で変わりません。両の刻みだけが異なります。今の目方を扱う用には現行をお使いください。</p>
 
-<h3>英法の拠り所</h3>
+<h3>英法の方式</h3>
 <table>
 <tr><td>インチ</td><td>0.0254 m</td><td>国際ヤード・ポンド法（1959年協定）。一寸は1.19303インチ</td></tr>
 <tr><td>ポンド</td><td>453.59237 g</td><td>同上。一ドラムはその256分の1</td></tr>
@@ -230,9 +262,6 @@ button:active{transform:translateY(1px);}
 </table>
 <p>重さの体系は英国式に依り、百斤（ハンドレットウェート）は112ポンド、トンは20百斤すなわち2240ポンドです。米国の慣習単位（100ポンド・2000ポンド）とは約一割異なりますので、米国の帳簿を読む際はご注意ください。</p>
 <p>量もまた帝国基準です。米国の乾量基準とは約三分の差があります。</p>
-
-<h3>品位について</h3>
-<p>品位の欄は既定で実測の比重を用います。「拠り所」を塵劫記に改めると伝承の比重で計りますが、こちらは実測との隔たりが大きく、ことに銀は約一・八倍に見積もられています。今の金銀を量る用には実測比重をお使いください。</p>
 
 <h3>お使いになる方へ</h3>
 <ul>
@@ -433,7 +462,7 @@ function fmt(v){
 }
 
 /* ---------- 状態（距離・面積・量・重さはそれぞれ独立） ---------- */
-const values={distance:1.0, area:1, volume:1, weight:1, money:1};
+const values={distance:1.0, area:1, angle:1, volume:1, weight:1, money:1};
 
 /* ---------- DOM参照 ---------- */
 const el=id=>document.getElementById(id);
@@ -890,215 +919,6 @@ function updateMoneyCard(){
   moneyEls.ginUnitBtn.textContent=GIN_DEN_LABEL[kinDen]+' ⇄';
 }
 
-/* ================= 品位（純度）カード =================
-   目方と嵩から二品の混合比を割り出す（アルキメデスの法）。
-   内部は g と cm³ で計算し、表示のみ和の単位に直す。 */
-
-const SUN3_CM3 = Math.pow(SHAKU_M.kane*100/10,3);   // 1立方寸＝27.818127 cm³（曲尺）
-const TRAD_SG  = 3.75/SUN3_CM3;                     // 匁/立方寸 → g/cm³
-
-/* real:実測比重 g/cm³　trad:塵劫記の一辺一寸あたり匁数（無き品は null） */
-const HINI_MAT={
-  kin   :{label:'金',   real:19.32, trad:175 },
-  gin   :{label:'銀',   real:10.49, trad:140 },
-  namari:{label:'鉛',   real:11.34, trad:95  },
-  dou   :{label:'銅',   real: 8.96, trad:75  },
-  suzu  :{label:'錫',   real: 7.31, trad:null},
-  tetsu :{label:'鉄',   real: 7.87, trad:60  },
-  aoishi:{label:'青石', real: 2.70, trad:26  },
-  tsuchi:{label:'土',   real: 1.50, trad:11  },
-  hinoki:{label:'檜',   real: 0.41, trad:3.2 }
-};
-const HINI_SEQ=['kin','gin','namari','dou','suzu','tetsu','aoishi','tsuchi','hinoki'];
-
-const HINI_SRC_LABEL={real:'実測比重',trad:'塵劫記'};
-let hiniSrc='real';
-
-/* 求むるもの：品位＝目方と嵩から純度を出す／嵩＝目方と品位からあるべき嵩を出す（験し） */
-const HINI_AIM_LABEL={hini:'品位を知る',kasa:'嵩を験す'};
-let hiniAim='hini';
-let hiniPct=84.29;          // 験しモードで用いる品位（％）
-
-const HINI_VM_SEQ=['direct','ellipse','box'];const HINI_VM_LABEL={direct:'嵩を直に',ellipse:'楕円の板',box:'四角の柱'};
-const HINI_VM_DIMS={ellipse:['長さ','幅','厚さ'], box:['縦','横','高さ']};
-let hiniVMode='direct';
-
-const HW_SEQ=['g','kg','monme','kan','kin','ryo'];
-const HW_LABEL={g:'g',kg:'kg',monme:'匁',kan:'貫',kin:'斤',ryo:'両'};
-const HW_F={g:1,kg:1000,monme:3.75,kan:3750,kin:600,ryo:15};          // → g
-const HV_SEQ=['cm3','sun3','go','shaku','sho'];
-const HV_LABEL={cm3:'cm³',sun3:'立方寸',go:'合',shaku:'勺',sho:'升'};
-const HV_F={cm3:1, sun3:SUN3_CM3, go:ML_GO, shaku:ML_GO/10, sho:ML_GO*10}; // → cm³
-const HL_SEQ=['mm','cm','sun','bu'];
-const HL_LABEL={mm:'mm',cm:'cm',sun:'寸',bu:'分'};
-const HL_F={mm:0.1, cm:1, sun:SHAKU_M.kane*100, bu:SHAKU_M.kane*10};   // → cm
-
-let hiniTarget='kin', hiniOther='gin';
-let hiniM=17.73, hiniV=1.04;              // g, cm³（慶長小判のおよそ）
-let hiniD=[7.1,3.9,0.048];                // cm
-let hwUnit='g', hvUnit='cm3', hlUnit='mm';
-let hiniEls=null;
-
-const hiniSG=k=>{
-  const m=HINI_MAT[k];
-  return hiniSrc==='real' ? m.real : (m.trad==null ? null : m.trad*TRAD_SG);
-};
-const hiniAvail=()=>HINI_SEQ.filter(k=>hiniSG(k)!=null);
-function hiniCycle(cur,other){
-  const av=hiniAvail(); const i=Math.max(0,av.indexOf(cur));
-  for(let n=1;n<=av.length;n++){ const c=av[(i+n)%av.length]; if(c!==other) return c; }
-  return cur;
-}
-function hiniFixSel(){
-  const av=hiniAvail();
-  if(!av.includes(hiniTarget)) hiniTarget=av[0];
-  if(!av.includes(hiniOther)||hiniOther===hiniTarget) hiniOther=av.find(k=>k!==hiniTarget);
-}
-
-/* V=Va+Vb, M=dA·Va+dB·Vb  →  Va=(M−dB·V)/(dA−dB) */
-function hiniSolve(M,V,dA,dB){
-  if(dA===dB) return null;
-  const Va=(M-dB*V)/(dA-dB);
-  return {Va, Vb:V-Va, Ma:dA*Va, Mb:dB*(V-Va), ratio:dA*Va/M};
-}
-function hiniVolume(){
-  if(hiniVMode==='direct') return hiniV;
-  const [a,b,c]=hiniD;
-  return hiniVMode==='ellipse' ? Math.PI/4*a*b*c : a*b*c;
-}
-const momG=g=>bunkatsu(g,TRAD.weight.BREAK,TRAD.weight.toBase);
-
-function buildHiniCard(){
-  const container=el('rows-hini');
-  const rowOf=(labelText)=>{
-    const row=document.createElement('div'); row.className='row';
-    const lb=document.createElement('span'); lb.className='label distLeft'; lb.textContent=labelText;
-    row.appendChild(lb); container.appendChild(row); return {row,lb};
-  };
-  const mkReadout=(t)=>{
-    const {row}=rowOf(t);
-    const ro=document.createElement('span'); ro.className='readout'; row.appendChild(ro); return ro;
-  };
-  const hiniReadout=mkReadout('品位');
-  const breakReadout=mkReadout('内訳');
-  const sgReadout=mkReadout('比重');
-  const kasaReadout=mkReadout('あるべき嵩');
-
-  const mkWide=(t,onClick)=>{
-    const {row}=rowOf(t);
-    const b=document.createElement('button'); b.type='button'; b.className='cycleBtn wideBtn';
-    b.addEventListener('click',()=>{onClick(); updateHiniCard();});
-    row.appendChild(b); return b;
-  };
-  const aimBtn=mkWide('求むるもの',()=>{ hiniAim=(hiniAim==='hini'?'kasa':'hini'); });
-  const srcBtn=mkWide('基準',()=>{ hiniSrc=(hiniSrc==='real'?'trad':'real'); hiniFixSel(); });
-  const targetBtn=mkWide('対象物',()=>{ hiniTarget=hiniCycle(hiniTarget,hiniOther); });
-  const otherBtn =mkWide('混合物',()=>{ hiniOther =hiniCycle(hiniOther,hiniTarget); });
-
-  const mkNum=(t,seq,labels,getU,setU,onVal)=>{
-    const {row,lb}=rowOf(t);
-    const inp=document.createElement('input'); inp.type='number'; inp.step='any';
-    const btn=document.createElement('button'); btn.type='button'; btn.className='cycleBtn';
-    btn.addEventListener('click',()=>{ const i=seq.indexOf(getU()); setU(seq[(i+1)%seq.length]); updateHiniCard(); });
-    inp.addEventListener('input',()=>{ const v=parseFloat(inp.value); if(isFinite(v)&&v>0) onVal(v); updateHiniCard(); });
-    row.appendChild(inp); row.appendChild(btn); return {row,lb,inp,btn};
-  };
-  const wEl=mkNum('目方',HW_SEQ,HW_LABEL,()=>hwUnit,u=>hwUnit=u,v=>hiniM=v*HW_F[hwUnit]);
-
-  const pctRow=rowOf('品位');
-  const pctInput=document.createElement('input'); pctInput.type='number'; pctInput.step='any';
-  const pctUnit=document.createElement('span'); pctUnit.className='unitCell'; pctUnit.textContent='％';
-  pctInput.addEventListener('input',()=>{
-    const v=parseFloat(pctInput.value);
-    if(isFinite(v)&&v>=0&&v<=100) hiniPct=v;
-    updateHiniCard();
-  });
-  pctRow.row.appendChild(pctInput); pctRow.row.appendChild(pctUnit);
-
-  const vmBtn=mkWide('求嵩',()=>{ const i=HINI_VM_SEQ.indexOf(hiniVMode); hiniVMode=HINI_VM_SEQ[(i+1)%HINI_VM_SEQ.length]; });
-  const vEl=mkNum('嵩',HV_SEQ,HV_LABEL,()=>hvUnit,u=>hvUnit=u,v=>hiniV=v*HV_F[hvUnit]);
-  const dEls=[0,1,2].map(i=>mkNum('',HL_SEQ,HL_LABEL,()=>hlUnit,u=>hlUnit=u,v=>hiniD[i]=v*HL_F[hlUnit]));
-
-  hiniEls={hiniReadout,breakReadout,sgReadout,kasaReadout,aimBtn,srcBtn,targetBtn,otherBtn,
-           wEl,pctRow:pctRow.row,pctInput,vmBtn,vEl,dEls};
-  updateHiniCard();
-}
-
-function updateHiniCard(){
-  const active=document.activeElement;
-  const dA=hiniSG(hiniTarget), dB=hiniSG(hiniOther);
-  const nameA=HINI_MAT[hiniTarget].label, nameB=HINI_MAT[hiniOther].label;
-  const M=hiniM, isKasa=(hiniAim==='kasa');
-  const E=hiniEls;
-
-  E.aimBtn.textContent = HINI_AIM_LABEL[hiniAim]+' ⇄';
-  E.srcBtn.textContent = HINI_SRC_LABEL[hiniSrc]+' ⇄';
-  E.targetBtn.textContent= `${nameA}（${dA}）⇄`;
-  E.otherBtn.textContent = `${nameB}（${dB}）⇄`;
-  E.vmBtn.textContent    = HINI_VM_LABEL[hiniVMode]+' ⇄';
-
-  if(active!==E.wEl.inp) E.wEl.inp.value=fmt(M/HW_F[hwUnit]);
-  E.wEl.btn.textContent=HW_LABEL[hwUnit]+' ⇄';
-  if(active!==E.pctInput) E.pctInput.value=hiniPct;
-
-  /* 行の出し入れ */
-  const direct=(hiniVMode==='direct');
-  E.hiniReadout.parentElement.style.display = isKasa?'none':'';
-  E.kasaReadout.parentElement.style.display = isKasa?'':'none';
-  E.pctRow.style.display        = isKasa?'':'none';
-  E.vmBtn.parentElement.style.display = isKasa?'none':'';
-  E.vEl.row.style.display       = (!isKasa&&direct)?'':'none';
-  E.dEls.forEach(d=>{ d.row.style.display=(!isKasa&&!direct)?'':'none'; });
-
-  if(isKasa){
-    /* 験し：目方と品位から、あるべき嵩と比重を出す */
-    const f=hiniPct/100, Ma=M*f, Mb=M-Ma;
-    const V=Ma/dA+Mb/dB;
-    const sg=M/V;
-    E.kasaReadout.textContent =
-      `${fmt(V)}cm³　${fmt(V/SUN3_CM3)}立方寸　${fmt(V/18.039)}勺`;
-    E.sgReadout.textContent =
-      `${(Math.round(sg*1000)/1000).toFixed(3)}g/cm³　立方寸あたり${(Math.round(sg/TRAD_SG*100)/100).toFixed(2)}匁`;
-    E.breakReadout.textContent =
-      `${nameA}${momG(Ma)}（${fmt(Ma)}g）・${nameB}${momG(Mb)}（${fmt(Mb)}g）`;
-    return;
-  }
-
-  const V=hiniVolume();
-  const r=(V>0)?hiniSolve(M,V,dA,dB):null;
-  const sg=(V>0)?M/V:0;
-
-  E.sgReadout.textContent = (V>0)
-    ? `${(Math.round(sg*1000)/1000).toFixed(3)}g/cm³　立方寸あたり${(Math.round(sg/TRAD_SG*100)/100).toFixed(2)}匁`
-    : '－';
-
-  if(!r){
-    E.hiniReadout.textContent='－';
-    E.breakReadout.textContent='比重の等しき品は分かたれず';
-  } else if(r.Va<0||r.Vb<0){
-    E.hiniReadout.textContent='－';
-    E.breakReadout.textContent=`この目方と嵩は${nameA}（${dA}）と${nameB}（${dB}）の間にあらず`;
-  } else {
-    const pct=r.ratio*100;
-    const kara=(hiniTarget==='kin') ? `　${(Math.round(r.ratio*24*10)/10).toFixed(1)}金` : '';
-    E.hiniReadout.textContent=`${nameA} ${(Math.round(pct*100)/100).toFixed(2)}％${kara}`;
-    E.breakReadout.textContent=
-      `${nameA}${momG(r.Ma)}（${fmt(r.Ma)}g）・${nameB}${momG(r.Mb)}（${fmt(r.Mb)}g）`;
-  }
-
-  if(active!==E.vEl.inp) E.vEl.inp.value=fmt((direct?hiniV:V)/HV_F[hvUnit]);
-  E.vEl.btn.textContent=HV_LABEL[hvUnit]+' ⇄';
-
-  const names=HINI_VM_DIMS[hiniVMode]||[];
-  E.dEls.forEach((d,i)=>{
-    if(!direct){
-      d.lb.textContent=names[i];
-      if(active!==d.inp) d.inp.value=fmt(hiniD[i]/HL_F[hlUnit]);
-      d.btn.textContent=HL_LABEL[hlUnit]+' ⇄';
-    }
-  });
-}
-
 /* ---------- 面積カードの計算欄（縦・横から面積を求め、他行へ反映） ---------- */
 const AC_KEN_SEQ=['ken','kyoma','tatami','kyodatami'];
 const AC_KEN_LABEL={ken:'間',kyoma:'京間',tatami:'畳',kyodatami:'京畳'};
@@ -1186,11 +1006,285 @@ function buildAreaCalcSection(){
   refresh();
 }
 
+/* ---------- 度分秒の記号を読み解く ----------
+   156°36′49″ / 156度36分49秒 / 156d36'49" のいずれも受ける */
+const DMS_MARK=/[°′″"'’‘”度分秒dDmMsS]/;
+function parseDMS(str){
+  let s=String(str).trim()
+    .replace(/[０-９]/g,c=>String.fromCharCode(c.charCodeAt(0)-0xFEE0))
+    .replace(/[．。]/g,'.').replace(/[－ー−‐]/g,'-').replace(/[\s　]/g,'');
+  if(!s) return null;
+  /* 記号を D・M・S に統一する。二重引用符は秒ゆえ先に処理する */
+  s=s.replace(/''|’’|‘‘|[″”"]/g,'S')
+     .replace(/[′’‘']/g,'M')
+     .replace(/[°度]/g,'D').replace(/分/g,'M').replace(/秒/g,'S')
+     .replace(/[dD]/g,'D').replace(/[mM]/g,'M').replace(/[sS]/g,'S');
+  const out={d:0,m:0,s:0}; let hit=0;
+  const re=/(-?\d+(?:\.\d+)?)([DMS])/g; let g;
+  while((g=re.exec(s))){
+    const v=parseFloat(g[1]);
+    if(g[2]==='D'){out.d=v;} else if(g[2]==='M'){out.m=v;} else {out.s=v;}
+    hit++;
+  }
+  return hit?out:null;
+}
+
+/* ================= 角度カード =================
+   1天＝12宮、1宮＝30度、1度＝60分、1分＝60秒。内部は「度」で保持する。 */
+const ANGLE_BREAK=[['天',1296000],['宮',108000],['度',3600],['分',60],['秒',1]];
+const angleToSec=d=>d*3600;
+
+const ANGLE_MODE_SEQ=['read','edit'];
+const ANGLE_MODE_LABEL={read:'度数→天宮',edit:'天宮→度数'};
+let angleMode='read';
+
+const DEG_SEQ=['deg','min','sec'];
+const DEG_LABEL={deg:'度',min:'分',sec:'秒'};
+const DEG_F={deg:1, min:1/60, sec:1/3600};   // → 度
+let degUnit='deg';
+let angleEls=null;
+
+function buildAngleCard(){
+  const container=el('rows-angle');
+
+  const row1=document.createElement('div'); row1.className='row';
+  const modeBtn=document.createElement('button'); modeBtn.type='button'; modeBtn.className='distLeft';
+  modeBtn.addEventListener('click',()=>{
+    const i=ANGLE_MODE_SEQ.indexOf(angleMode);
+    angleMode=ANGLE_MODE_SEQ[(i+1)%ANGLE_MODE_SEQ.length];
+    if(angleMode==='edit') refreshAngleFields();
+    updateAngleCard();
+  });
+  const midCell=document.createElement('span'); midCell.className='moneyMid';
+  const readout=document.createElement('span'); readout.className='readout';
+  const tenkyuRow=document.createElement('div'); tenkyuRow.className='kinginRow';
+  function tkLine(nameChar){
+    const line=document.createElement('div'); line.className='kinginLine';
+    const nm=document.createElement('span'); nm.className='kinginName'; nm.textContent=nameChar;
+    line.appendChild(nm); tenkyuRow.appendChild(line);
+    return line;
+  }
+  function tkSlot(line,unitChar,isInt,isDMS){
+    const input=document.createElement('input');
+    if(isDMS){ input.type='text'; input.inputMode='decimal'; }
+    else { input.type='number'; input.step=isInt?'1':'any'; }
+    input.className='miniInput'+(isInt?'':' ginInput');
+    const label=document.createElement('span'); label.className='label'; label.textContent=unitChar;
+    line.appendChild(input); line.appendChild(label);
+    return input;
+  }
+  const tenLine=tkLine('天'), degLine=tkLine('度');
+  const tenInput=tkSlot(tenLine,'天',true);
+  const kyuInput=tkSlot(tenLine,'宮',true);
+  const doInput =tkSlot(degLine,'度',true,true);
+  const funInput=tkSlot(degLine,'分',true,true);
+  const byoInput=tkSlot(degLine,'秒',false,true);
+  midCell.appendChild(readout); midCell.appendChild(tenkyuRow);
+  row1.appendChild(modeBtn); row1.appendChild(midCell);
+  container.appendChild(row1);
+
+  const val=inp=>{
+    const g=/-?\d+(?:\.\d+)?/.exec(String(inp.value));
+    return g?parseFloat(g[0]):0;
+  };
+  const recalc=src=>{
+    /* 記号入りの欄は、その欄だけで度分秒すべてを表すものとみなす */
+    if(src && DMS_MARK.test(src.value)){
+      const p=parseDMS(src.value);
+      if(p){
+        values.angle = val(tenInput)*360 + val(kyuInput)*30 + p.d + p.m/60 + p.s/3600;
+        updateAngleCard();
+        return;
+      }
+    }
+    values.angle = val(tenInput)*360 + val(kyuInput)*30 + val(doInput)
+                 + val(funInput)/60 + val(byoInput)/3600;
+    updateAngleCard();
+  };
+  /* 記号入りの値を度・分・秒の三欄へ振り分ける */
+  const spread=src=>{
+    if(!DMS_MARK.test(src.value)) return;
+    const p=parseDMS(src.value);
+    if(!p) return;
+    doInput.value=p.d; funInput.value=p.m; byoInput.value=p.s;
+    recalc(null);
+  };
+  [tenInput,kyuInput,doInput,funInput,byoInput].forEach(i=>{
+    i.addEventListener('input',()=>recalc(i));
+  });
+  [doInput,funInput,byoInput].forEach(i=>{
+    i.addEventListener('change',()=>spread(i));                    // 確定時（入力欄を離れる・改行）
+    i.addEventListener('paste',()=>setTimeout(()=>spread(i),0));   // 貼り付けは即座に
+  });
+
+  const row2=document.createElement('div'); row2.className='row';
+  const label2=document.createElement('span'); label2.className='label distLeft'; label2.textContent='度数';
+  const degInput=document.createElement('input'); degInput.type='number'; degInput.step='any';
+  const degBtn=document.createElement('button'); degBtn.type='button'; degBtn.className='cycleBtn';
+  degBtn.addEventListener('click',()=>{
+    const i=DEG_SEQ.indexOf(degUnit);
+    degUnit=DEG_SEQ[(i+1)%DEG_SEQ.length];
+    updateAngleCard();
+  });
+  row2.appendChild(label2); row2.appendChild(degInput); row2.appendChild(degBtn);
+  container.appendChild(row2);
+  degInput.addEventListener('input',()=>{
+    const v=parseFloat(degInput.value);
+    if(isFinite(v)&&v>0) values.angle=v*DEG_F[degUnit];
+    if(angleMode==='edit') refreshAngleFields();
+    updateAngleCard();
+  });
+
+  const row3=document.createElement('div'); row3.className='row';
+  const label3=document.createElement('span'); label3.className='label distLeft'; label3.textContent='弧度';
+  const radInput=document.createElement('input'); radInput.type='number'; radInput.step='any';
+  const radCell=document.createElement('span'); radCell.className='unitCell'; radCell.textContent='ラジアン';
+  row3.appendChild(label3); row3.appendChild(radInput); row3.appendChild(radCell);
+  container.appendChild(row3);
+  radInput.addEventListener('input',()=>{
+    const v=parseFloat(radInput.value);
+    if(isFinite(v)&&v>0) values.angle=v*180/Math.PI;
+    if(angleMode==='edit') refreshAngleFields();
+    updateAngleCard();
+  });
+
+  angleEls={modeBtn,readout,tenkyuRow,tenInput,kyuInput,doInput,funInput,byoInput,degInput,degBtn,radInput};
+  updateAngleCard();
+}
+
+function refreshAngleFields(){
+  const active=document.activeElement;
+  let r=values.angle;
+  const ten=Math.floor(R6(r/360));  r=R6(r-ten*360);
+  const kyu=Math.floor(R6(r/30));   r=R6(r-kyu*30);
+  const dou=Math.floor(R6(r));      r=R6(r-dou);
+  const fun=Math.floor(R6(r*60));   r=R6(r*60-fun);
+  const byo=Math.round(r*60*100)/100;
+  const set=(inp,v)=>{ if(active!==inp) inp.value=v; };
+  set(angleEls.tenInput,ten); set(angleEls.kyuInput,kyu);
+  set(angleEls.doInput,dou);  set(angleEls.funInput,fun);
+  set(angleEls.byoInput,byo);
+}
+
+function updateAngleCard(){
+  const active=document.activeElement;
+  const base=values.angle;
+  const isEdit=(angleMode==='edit');
+
+  angleEls.modeBtn.textContent=ANGLE_MODE_LABEL[angleMode]+' ⇄';
+  angleEls.readout.style.display   = isEdit ? 'none' : '';
+  angleEls.tenkyuRow.style.display = isEdit ? '' : 'none';
+  if(!isEdit) angleEls.readout.textContent=bunkatsu(base,ANGLE_BREAK,angleToSec);
+
+  if(active!==angleEls.degInput) angleEls.degInput.value=fmt(base/DEG_F[degUnit]);
+  angleEls.degBtn.textContent=DEG_LABEL[degUnit]+' ⇄';
+  if(active!==angleEls.radInput) angleEls.radInput.value=fmt(base*Math.PI/180);
+  updateTrigSection();
+}
+
+/* ---------- 角度カードの三角法欄（出力と入力を兼ねる） ---------- */
+let trigEls=null;
+const TRIG_SEQ=['sin','cos','tan'];
+const TRIG_JP={sin:'正弦',cos:'余弦',tan:'正接'};
+const trigSnap=v=>Math.abs(v)<1e-12?0:v;
+const trigNumRaw=v=>{
+  const a=Math.abs(v);
+  if(a!==0 && (a>=1e7||a<1e-6)) return v.toExponential(4);
+  return v.toFixed(7);
+};
+const trigLogRaw=v=>{
+  const L=Math.log10(Math.abs(v));   // 真数が負のときは絶対値を取り、符号は別に示す
+  return (Math.abs(L)<5e-7?0:L).toFixed(6);
+};
+let trigNow={sin:0,cos:1,tan:0};     // 直前の三角比。対数入力時の符号の判断に用いる
+
+/* 三角比から角度を逆算する。主値を取り、〇度以上三百六十度未満に直す */
+function setAngleFromTrig(kind,v){
+  let a;
+  if(kind==='sin'){ if(v<-1||v>1) return; a=Math.asin(v); }
+  else if(kind==='cos'){ if(v<-1||v>1) return; a=Math.acos(v); }
+  else { a=Math.atan(v); }
+  a=a*180/Math.PI;
+  values.angle=((a%360)+360)%360;
+  if(angleMode==='edit') refreshAngleFields();
+  updateAngleCard();
+}
+
+function buildTrigSection(){
+  const container=el('rows-angle');
+  const details=document.createElement('details'); details.className='calcBox';
+  const summary=document.createElement('summary'); summary.textContent='三角法';
+  const body=document.createElement('div');
+  details.appendChild(summary); details.appendChild(body);
+  container.appendChild(details);
+
+  const mkRow=(labelText,unitText,onVal)=>{
+    const row=document.createElement('div'); row.className='row';
+    const lb=document.createElement('span'); lb.className='label distLeft'; lb.textContent=labelText;
+    const inp=document.createElement('input'); inp.type='number'; inp.step='any';
+    const un=document.createElement('span'); un.className='unitCell'; un.textContent=unitText;
+    inp.addEventListener('input',()=>{
+      const v=parseFloat(inp.value);
+      if(isFinite(v)) onVal(v);
+    });
+    row.appendChild(lb); row.appendChild(inp); row.appendChild(un);
+    body.appendChild(row);
+    return {inp,un};
+  };
+
+  trigEls={};
+  TRIG_SEQ.forEach(k=>{
+    const val=mkRow(TRIG_JP[k],k, v=>setAngleFromTrig(k,v));
+    trigEls[k]={valInput:val.inp, valUnit:val.un};
+  });
+  TRIG_SEQ.forEach(k=>{
+    const log=mkRow('対数'+TRIG_JP[k],'log '+k, v=>{
+      const sgn = (trigNow[k]<0) ? -1 : 1;   // 符号は今の象限を引き継ぐ
+      setAngleFromTrig(k, sgn*Math.pow(10,v));
+    });
+    trigEls[k].logInput=log.inp; trigEls[k].logUnit=log.un;
+  });
+
+  updateTrigSection();
+}
+
+function updateTrigSection(){
+  if(!trigEls) return;
+  const active=document.activeElement;
+  const rad=values.angle*Math.PI/180;
+  const s=trigSnap(Math.sin(rad)), c=trigSnap(Math.cos(rad));
+  const t=(c===0)?Infinity:trigSnap(s/c);
+  const vals={sin:s,cos:c,tan:t};
+  trigNow=vals;
+  TRIG_SEQ.forEach(k=>{
+    const v=vals[k], e=trigEls[k];
+    const finite=isFinite(v);
+    if(active!==e.valInput) e.valInput.value = finite?trigNumRaw(v):'';
+    e.valUnit.textContent = k + (finite?'':'（∞）');
+    /* 真数が負なるときは符号を反めて log(-cos) と記す。値は絶対値の対数に等し */
+    const ok = finite && v!==0;
+    if(active!==e.logInput) e.logInput.value = ok?trigLogRaw(v):'';
+    e.logUnit.textContent = !finite ? 'log '+k+'（∞）'
+                          : v===0   ? 'log '+k+'（−∞）'
+                          : v<0     ? 'log(-'+k+')'
+                          :           'log '+k;
+  });
+}
+
+/* ---------- 目次：該当の欄へ滑らかに送る ---------- */
+document.querySelectorAll('.toc button').forEach(b=>{
+  b.addEventListener('click',()=>{
+    const t=document.getElementById(b.dataset.go);
+    if(t) t.scrollIntoView({behavior:'smooth', block:'start'});
+  });
+});
+
 buildDistanceCard();
 Object.keys(TRAD).forEach(buildTradCard);
 buildAreaCalcSection();
+buildAngleCard();
+buildTrigSection();
 buildMoneyCard();
-buildHiniCard();
 </script>
 </body>
 </html>
