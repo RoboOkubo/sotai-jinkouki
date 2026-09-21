@@ -229,6 +229,10 @@ dialog.howto::backdrop{ background:rgba(5,7,12,.72); }
 .howto dt{ color:var(--fg); margin-top:10px; letter-spacing:.04em; }
 .howto dt:first-child{ margin-top:0; }
 .howto dd{ margin:2px 0 0; }
+/* 受け付けられない入力の印 */
+.card input.bad{ border-color:#e07a6a; outline:1px solid #e07a6a; }
+.card.stale .readout, .card.stale input:not(.bad):not(.cur){ opacity:.35; }
+.inHint{ margin:-2px 0 10px; text-align:right; font-size:.76rem; letter-spacing:.04em; color:#e89a8c; }
 /* ガイドの図 */
 .howto figure{ margin:10px 0 6px; padding:10px; background:var(--ink); border:1px solid var(--line); border-radius:10px; }
 .howto figure svg{ display:block; width:100%; height:auto; }
@@ -314,7 +318,16 @@ dialog.howto::backdrop{ background:rgba(5,7,12,.72); }
 <summary>凡例・方式</summary>
 <div class="gBody">
 
-<p>本表の換算はすべて現行の国際基準に依っています。丸めた近似値は用いず、定義値から算び出しているため、いずれの単位も誤差を含みません。</p>
+<p>本表の換算はすべて現行の国際基準に依っています。換算に用いる定数は丸めた近似値を用いず、定義値から算び出しています。</p>
+
+<h3>表示の桁</h3>
+<p>計算は定義値のまま行いますが、画面に出す数は桁を限っているため、表示の上では丸めが入ります。</p>
+<ul>
+<li>入力欄の数は四捨五入です。一万以上は整数、一以上は小数第二位、〇・〇〇一以上は小数第五位、それより小さい数は有効数字三桁で示します。</li>
+<li>上段の内訳は、尺貫法と天宮では最も小さい単位に満たない端数を切り捨てます。英法は最も小さい単位を小数第一位で四捨五入します。</li>
+<li>両替の内訳の銀は、厘（〇・〇一匁）未満を切り捨てます。銭は一文未満を四捨五入します。</li>
+<li>三角法は、真数を小数第七位、対数を小数第六位で四捨五入します。</li>
+</ul>
 
 <h3>尺貫法の方式</h3>
 <table>
@@ -323,7 +336,7 @@ dialog.howto::backdrop{ background:rgba(5,7,12,.72); }
 <tr><td>升</td><td>2401/1331 L</td><td>一合はその十分の一</td></tr>
 <tr><td>匁</td><td>3.75 g</td><td>定義値。一貫は千匁、一斤は百六十匁</td></tr>
 </table>
-<p>鯨尺は曲尺の一割二分五厘増（一尺二寸五分）、呉服尺は二割増（一尺二寸）としています。</p>
+<p>鯨尺は曲尺の二割五分増（一尺二寸五分）、呉服尺は二割増（一尺二寸）としています。</p>
 
 <h3>両の二法について</h3>
 <p>重さの欄の左端を押すと、斤量・衡数・斤量（現行）の三つに移ります。両の値が二通りある由です。</p>
@@ -344,6 +357,7 @@ dialog.howto::backdrop{ background:rgba(5,7,12,.72); }
 
 <h3>お使いになる方へ</h3>
 <ul>
+<li>数は半角の数字で入れてください。読めない字や受け付けられない数を入れると、その入力欄が赤く縁どられ、理由が添えられます。そのとき同じ項目のほかの数は薄く表示され、前に入れた数の換算のままであることを示します。入力欄を離れると、最後に受け付けた数に戻ります。</li>
 <li>古い帳面や証文の数を今の単位に直す用にも、その逆にも、そのままお使いいただけます。</li>
 <li>ただし江戸期の枡や秤は土地や時代によって差がありました。本表は明治の統一値を基としています。</li>
 <li>売買や届出など公の計量には、計量法に定める単位をお使いください。</li>
@@ -1626,7 +1640,12 @@ const HOWTO={
     ['度数→天宮','度数か弧度の欄に入れると、天・宮・度・分・秒に割って示します。一天は十二宮、一宮は三十度、一度は六十分、一分は六十秒です。'],
     ['天宮→度数','天・宮・度・分・秒の欄に入れると、度数と弧度の欄に直します。'],
     ['記号で入れる','①左上のボタンで「天宮→度数」にします。②度・分・秒のどの欄にでも、12°24′30″ や 12度24分30秒 と記号ごと入れます。③度・分・秒に振り分けられます。度数の欄に入れても同じく働きます。',{fig:FIG_DMS}],
-    ['三角法','開くと、正弦・余弦・正接とその常用対数を示します。どの欄に入れても、そこから角度を逆に求めます。']
+    ['三角法','開くと、正弦・余弦・正接とその常用対数を示します。どの欄に入れても、そこから角度を逆に求めます。ひとつの値に当たる角は幾つもあります（正弦0.5なら30度と150度など）が、逆に求めるときは次の範囲の角を返します。正弦と余弦は−1以上1以下の数でなければ角を持たないため、それ以外の数は受け付けません。',{sub:[
+      ['正弦から','0度以上90度以下、または270度以上360度未満。正弦0.5なら30度、−0.5なら330度。'],
+      ['余弦から','0度以上180度以下。余弦0.5なら60度、−0.5なら120度。'],
+      ['正接から','0度以上90度未満、または270度より大きく360度未満。正接1なら45度、−1なら315度。'],
+      ['対数から','対数の欄に入れたときは、真数の正負を今の角度から引き継ぎ、そのうえで上の範囲の角を返します。']
+    ]}]
   ]},
   'sec-volume':{t:'量',i:[
     ['入れ方','ミリリットル・英法・量数の欄のどれに数を入れても、ほかの欄と上の二行が同時に変わります。'],
@@ -1747,6 +1766,91 @@ const HOWTO={
     b.setAttribute('aria-label',HOWTO[card.id].t+'の使い方');
     b.addEventListener('click',()=>open(card.id));
     card.appendChild(b);
+  });
+})();
+
+/* ---------- 受け付けられない入力の見張り ----------
+   各欄は「読める数で、決まりに合うときだけ」受け付け、それ以外は捨てる。
+   捨てたときは、その欄を赤く縁どって理由を添え、同じ項目のほかの数を薄くする。
+   入力欄を離れると、最後に受け付けた数に戻す。 */
+(function(){
+  const MSG={read:'半角の数字で入れてください', pos:'0より大きい数を入れてください',
+             unit:'−1以上1以下の数を入れてください', logunit:'0以下の数を入れてください'};
+  /* 欄ごとの決まりを付ける */
+  document.querySelectorAll('.card input').forEach(inp=>{
+    const row=inp.closest('.row');
+    if(inp.closest('.kinginRow')){ inp.dataset.rule = inp.type==='text' ? 'dms' : 'free'; return; }
+    const calc=inp.closest('.calcBox');
+    if(calc && inp.closest('#rows-area')){ inp.dataset.rule='posOpt'; return; }
+    if(calc && inp.closest('#rows-angle')){
+      const lb=row.querySelector('.label').textContent;
+      inp.dataset.rule = /^(正弦|余弦)$/.test(lb) ? 'unit' : /^対数(正弦|余弦)$/.test(lb) ? 'logunit' : 'any';
+      return;
+    }
+    inp.dataset.rule = inp.type==='text' ? 'posdms' : 'pos';
+  });
+  const num=raw=>{ const g=/-?\d+(?:\.\d+)?/.exec(raw); return g?parseFloat(g[0]):NaN; };
+  /* 決まりに照らす。'' は受け付け、'empty' は空欄、ほかは理由 */
+  const judge=inp=>{
+    const r=inp.dataset.rule, raw=inp.value.trim();
+    if(!r||r==='free') return '';
+    const bad=inp.validity&&inp.validity.badInput;
+    if(raw===''&&!bad) return (r==='posOpt'||r==='dms') ? '' : 'empty';
+    if((r==='dms'||r==='posdms') && DMS_MARK.test(raw)){
+      const p=parseDMS(raw);
+      if(!p) return MSG.read;
+      if(r==='posdms' && !(p.d+p.m/60+p.s/3600>0)) return MSG.pos;
+      return '';
+    }
+    const v = inp.type==='text' ? num(raw) : parseFloat(raw);
+    if(bad||!isFinite(v)) return MSG.read;
+    if(r==='pos'||r==='posOpt'||r==='posdms') return v>0 ? '' : MSG.pos;
+    if(r==='unit') return (v>=-1&&v<=1) ? '' : MSG.unit;
+    if(r==='logunit') return v<=0 ? '' : MSG.logunit;
+    return '';
+  };
+  const UPD={
+    'rows-distance':()=>updateDistanceCard(),
+    'rows-area':()=>updateTradCard('area'),
+    'rows-volume':()=>updateTradCard('volume'),
+    'rows-weight':()=>updateTradCard('weight'),
+    'rows-angle':()=>{ if(angleMode==='edit') refreshAngleFields(); updateAngleCard(); },
+    'rows-money':()=>updateMoneyCard()
+  };
+  const unmark=inp=>{ inp.classList.remove('bad','cur'); if(inp._hint){ inp._hint.remove(); inp._hint=null; } };
+  const tidy=card=>{
+    card.querySelectorAll('input.bad, input.cur').forEach(i=>{ if(judge(i)==='') unmark(i); });
+    if(!card.querySelector('input.bad, input.cur')) card.classList.remove('stale');
+  };
+  const mark=(inp,why)=>{
+    const card=inp.closest('.card');
+    card.querySelectorAll('input.bad, input.cur').forEach(i=>{ if(i!==inp) unmark(i); });
+    inp.classList.add('cur');
+    card.classList.add('stale');
+    if(why==='empty'){ inp.classList.remove('bad'); if(inp._hint){ inp._hint.remove(); inp._hint=null; } return; }
+    inp.classList.add('bad');
+    if(!inp._hint){ inp._hint=document.createElement('p'); inp._hint.className='inHint'; inp.closest('.row').after(inp._hint); }
+    inp._hint.textContent=why;
+  };
+  document.addEventListener('input',e=>{
+    const inp=e.target;
+    if(!(inp instanceof HTMLInputElement)||!inp.dataset.rule) return;
+    const why=judge(inp), card=inp.closest('.card');
+    if(why){ mark(inp,why); }
+    else { unmark(inp); card.querySelectorAll('input.bad, input.cur').forEach(unmark); card.classList.remove('stale'); }
+  });
+  /* 入力欄を離れたら、最後に受け付けた数に戻す */
+  document.addEventListener('focusout',e=>{
+    const inp=e.target;
+    if(!(inp instanceof HTMLInputElement)||!inp.classList.contains('cur')) return;
+    if(inp.dataset.rule==='posOpt') return;            // 計算欄は打ったまま残す
+    const box=inp.closest('[id^="rows-"]');
+    setTimeout(()=>{ if(document.activeElement===inp) return; if(box&&UPD[box.id]) UPD[box.id](); tidy(inp.closest('.card')); },0);
+  });
+  /* ボタンで表示が改まったら印を見直す */
+  document.addEventListener('click',e=>{
+    const b=e.target.closest('.card button');
+    if(b&&!b.classList.contains('helpBtn')) tidy(b.closest('.card'));
   });
 })();
 
