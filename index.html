@@ -196,6 +196,76 @@ button:active{transform:translateY(1px);}
   .kinginName{margin-right:0;}
   .kinginLine{gap:3px;}
 }
+/* ---------- 使い方ガイド ---------- */
+.card{ position:relative; }
+.helpBtn{
+  position:absolute; top:21px; right:18px;
+  width:32px; height:32px; padding:0; border-radius:50%;
+  border:1px solid var(--line2); background:transparent;
+  color:var(--fg-dim); font-family:inherit; font-size:.95rem; line-height:1;
+  cursor:pointer;
+}
+.helpBtn:hover,.helpBtn:focus-visible{ border-color:var(--sun-soft); color:var(--fg); }
+dialog.howto{
+  width:calc(100% - 28px); max-width:460px; padding:0;
+  background:var(--ink2); color:var(--fg);
+  border:1px solid var(--line2); border-radius:14px;
+}
+dialog.howto::backdrop{ background:rgba(5,7,12,.72); }
+.howto .hHead{
+  display:flex; align-items:center; justify-content:space-between;
+  padding:16px 18px 12px; border-bottom:1px dashed var(--line2);
+}
+.howto h3{ margin:0; font-size:1.1rem; font-weight:600; letter-spacing:.1em; color:var(--sun-soft); }
+.howto .hClose{
+  width:32px; height:32px; padding:0; border-radius:50%;
+  border:1px solid var(--line2); background:transparent;
+  color:var(--fg-dim); font-size:1.1rem; line-height:1; cursor:pointer;
+}
+.howto .hBody{
+  margin:0; padding:14px 18px 20px; max-height:70vh; overflow:auto;
+  font-size:.86rem; line-height:1.85; color:var(--fg-dim);
+}
+.howto dt{ color:var(--fg); margin-top:10px; letter-spacing:.04em; }
+.howto dt:first-child{ margin-top:0; }
+.howto dd{ margin:2px 0 0; }
+/* ガイドの図 */
+.howto figure{ margin:10px 0 6px; padding:10px; background:var(--ink); border:1px solid var(--line); border-radius:10px; }
+.howto figure svg{ display:block; width:100%; height:auto; }
+.fig text{ font-family:"Yu Mincho","YuMincho","Hiragino Mincho ProN","MS PMincho",serif; font-size:12px; fill:var(--fg); }
+.fig .mono{ font-family:ui-monospace,"SFMono-Regular",Consolas,Menlo,monospace; }
+.fig .dim{ fill:var(--fg-dim); font-size:11px; }
+.fig .gold{ fill:var(--sun-soft); }
+.fig .bx{ fill:var(--ink3); stroke:var(--line2); stroke-width:1; }
+.fig .hl{ stroke:var(--sun-soft); stroke-width:2; }
+.fig .bub{ fill:var(--sun-soft); }
+.fig .bubt{ fill:var(--ink); }
+.fig .arw{ stroke:var(--sun-soft); stroke-width:1.5; fill:none; }
+.fig .ah{ fill:var(--sun-soft); }
+.howto dl.sub{ margin:10px 0 2px; padding:2px 0 2px 12px; border-left:2px solid var(--line2); }
+.howto dl.sub dt{ margin-top:8px; color:var(--sun-soft); }
+.howto dl.sub dt:first-child{ margin-top:0; }
+.howto dl.sub dd{ margin:0; }
+.howto .dd p{ margin:0; }
+.howto ol.steps{ margin:8px 0 0; padding-left:1.4em; }
+.howto .hBody{ position:relative; }
+.howto .term{ color:var(--fg); border-bottom:1px dotted var(--sun-soft); cursor:pointer; }
+.howto .term:focus-visible{ outline:1px solid var(--sun-soft); outline-offset:2px; }
+.howto .termPop{ display:none; position:absolute; z-index:2; padding:5px 11px; border-radius:7px;
+  background:var(--sun-soft); color:var(--ink); font-size:.8rem; white-space:nowrap; cursor:pointer; }
+.howto .termPop.on{ display:block; }
+.howto .termPop::before{ content:''; position:absolute; top:-6px; left:calc(var(--tx,50%) - 6px);
+  border:6px solid transparent; border-top:0; border-bottom-color:var(--sun-soft); }
+.howto .colBox{ margin:20px 0 0; padding:12px 14px 14px; border:1px dashed var(--line2); border-radius:10px; }
+.howto .colBox::before{ content:'コラム'; display:block; color:var(--sun-soft); font-size:.74rem; letter-spacing:.2em; margin-bottom:4px; }
+.howto .colBox dt{ margin-top:0; }
+.howto .colBox dd p+p{ margin-top:10px; }
+.howto ol.steps li{ margin-top:10px; }
+.howto ol.steps li::marker{ color:var(--sun-soft); }
+.howto dd p{ margin:0; }
+@media (max-width:360px){
+  .helpBtn{ top:16px; right:12px; width:30px; height:30px; }
+}
 </style>
 </head>
 <body>
@@ -281,6 +351,11 @@ button:active{transform:translateY(1px);}
 
 </div>
 </details>
+
+<dialog class="howto" id="howto" aria-labelledby="howtoTitle">
+  <div class="hHead"><h3 id="howtoTitle"></h3><button type="button" class="hClose" aria-label="閉じる">×</button></div>
+  <dl class="hBody" id="howtoBody"></dl>
+</dialog>
 
 <script>
 "use strict";
@@ -1052,7 +1127,7 @@ const AC_CATS={
   ft :{seq:AC_FT_SEQ,  label:AC_FT_LABEL,  f:AC_FT_F}
 };
 const AC_CAT_SEQ=['ken','m','ft'];
-const AC_GENRE_LABEL={ken:'尺度',m:'米',ft:'英法'};
+const AC_GENRE_LABEL={ken:'尺度',m:'メートル法',ft:'英法'};
 
 let acCat='ken';
 let acSub={ken:'ken', m:'m', ft:'foot'};
@@ -1414,6 +1489,261 @@ buildAreaCalcSection();
 buildAngleCard();
 buildTrigSection();
 buildMoneyCard();
+
+/* ---------- 使い方ガイド ---------- */
+/* 図の部品。座標は幅320の上で組む */
+const FG={
+  box:(x,y,w,t,hl)=>`<rect class="bx${hl?' hl':''}" x="${x}" y="${y}" width="${w}" height="28" rx="6"/><text x="${x+w/2}" y="${y+19}" text-anchor="middle">${t}</text>`,
+  inp:(x,y,w,v,hl)=>`<rect class="bx${hl?' hl':''}" x="${x}" y="${y}" width="${w}" height="28" rx="6"/><text class="mono" x="${x+w-7}" y="${y+19}" text-anchor="end">${v}</text>`,
+  txt:(x,y,t,cls,anc)=>`<text${cls?` class="${cls}"`:''} x="${x}" y="${y}"${anc?` text-anchor="${anc}"`:''}>${t}</text>`,
+  /* 吹き出し。tail:[向き,位置] 向きは up/down/left/right */
+  bub:(x,y,w,lines,tail)=>{
+    const h=10+lines.length*17;
+    let s=`<rect class="bub" x="${x}" y="${y}" width="${w}" height="${h}" rx="7"/>`;
+    if(tail){
+      const [d,p]=tail, pts=
+        d==='down' ?[[p-6,y+h],[p+6,y+h],[p,y+h+9]]:
+        d==='up'   ?[[p-6,y],[p+6,y],[p,y-9]]:
+        d==='left' ?[[x,p-6],[x,p+6],[x-9,p]]:
+                    [[x+w,p-6],[x+w,p+6],[x+w+9,p]];
+      s+=`<polygon class="bub" points="${pts.map(q=>q.join(',')).join(' ')}"/>`;
+    }
+    lines.forEach((l,i)=>{ s+=`<text class="bubt" x="${x+9}" y="${y+18+i*17}">${l}</text>`; });
+    return s;
+  },
+  /* 矢印 */
+  arrow:(x1,y1,x2,y2)=>{
+    const a=Math.atan2(y2-y1,x2-x1), L=8, W=4.5;
+    const bx=x2-L*Math.cos(a), by=y2-L*Math.sin(a);
+    const p1=[bx+W*Math.sin(a), by-W*Math.cos(a)], p2=[bx-W*Math.sin(a), by+W*Math.cos(a)];
+    return `<line class="arw" x1="${x1}" y1="${y1}" x2="${bx}" y2="${by}"/><polygon class="ah" points="${x2},${y2} ${p1.join(',')} ${p2.join(',')}"/>`;
+  },
+  svg:(h,body,title)=>`<svg class="fig" viewBox="0 0 320 ${h}" role="img" aria-label="${title}">${body}</svg>`
+};
+
+/* 尺度：物差しの種類（単位が尺・寸のとき） */
+const FIG_SHAKU=FG.svg(110,
+  FG.box(4,4,86,'曲尺 ⇄',true)+FG.inp(96,4,118,'3.30')+FG.box(220,4,96,'尺 ⇄')+
+  FG.bub(4,44,272,['単位が尺・寸のとき、左のボタンを押す','たびに物差しが替わる','曲尺 → 鯨尺 → 呉服尺 → 曲尺 …'],['up',47]),
+  '単位が尺のとき、左のボタンで曲尺・鯨尺・呉服尺を切り替える');
+
+/* 尺度：間の種類（二つの手順） */
+const FIG_KEN=FG.svg(210,
+  FG.bub(96,4,220,['① 右のボタンを押して、','　単位を「間」に合わせる'],['down',268])+
+  FG.box(4,60,86,'曲尺 ⇄')+FG.inp(96,60,118,'3.30')+FG.box(220,60,96,'尺 ⇄',true)+
+  FG.arrow(268,92,268,114)+FG.txt(258,107,'尺→寸→丈→里→町→間','dim','end')+
+  FG.box(4,118,86,'間 ⇄',true)+FG.inp(96,118,118,'0.55000')+FG.box(220,118,96,'間 ⇄')+
+  FG.bub(4,160,264,['② 左に出た「間」のボタンで選ぶ','間 → 京間 → 畳 → 京畳 → 間 …'],['up',47]),
+  '単位を間に合わせると左に間のボタンが出て、京間・畳・京畳を選べる');
+
+/* 角度：記号で入れる */
+const FIG_DMS=FG.svg(112,
+  FG.bub(4,4,104,['② 度の欄に','記号ごと入れる'],['right',22])+
+  FG.inp(116,8,78,'12°24′30″',true)+FG.txt(198,27,'度')+
+  FG.inp(214,8,32,'')+FG.txt(250,27,'分')+
+  FG.inp(266,8,32,'')+FG.txt(302,27,'秒')+
+  FG.arrow(155,40,155,62)+
+  FG.bub(4,62,104,['③ 度・分・秒に','振り分けられる'],['right',80])+
+  FG.inp(116,66,78,'12',true)+FG.txt(198,85,'度')+
+  FG.inp(214,66,32,'24',true)+FG.txt(250,85,'分')+
+  FG.inp(266,66,32,'30',true)+FG.txt(302,85,'秒'),
+  '度の欄に12度24分30秒を記号ごと入れると、度・分・秒の三つの欄に振り分けられる');
+
+/* 面積：計算 */
+const FIG_CALC=FG.svg(174,
+  FG.txt(8,22,'町法','dim')+FG.txt(198,22,'12歩','gold','end')+
+  `<polygon class="ah" points="8,49 18,49 13,56"/>`+FG.txt(23,58,'計算','gold')+
+  FG.box(4,70,52,'尺度',true)+FG.box(62,70,78,'メートル法')+FG.box(146,70,52,'英法')+
+  FG.txt(8,125,'縦')+FG.inp(26,106,100,'3')+FG.box(132,106,64,'間 ⇄')+
+  FG.txt(8,159,'横')+FG.inp(26,140,100,'4')+FG.box(132,140,64,'間 ⇄')+
+  FG.bub(212,6,104,['④ 面積が出る'],['left',19])+
+  FG.bub(212,44,104,['① 開く'])+FG.arrow(212,57,56,53)+
+  FG.bub(212,71,104,['② 物差しを選ぶ'],['left',84])+
+  FG.bub(212,112,104,['③ 長さを入れ、','単位を選ぶ'],['left',137]),
+  '計算を開き、物差しを選び、縦と横に長さを入れると、面積が上に出る');
+
+/* 両替：金相場の入れ方（省銭で分かるとき） */
+const FIG_KIN=FG.svg(248,
+  FG.bub(24,4,276,['① 相場が省銭で記載されている場合は、','　まず省銭欄に価格を入れる'],['down',126])+
+  FG.txt(8,79,'省銭')+FG.inp(56,60,140,'6872',true)+FG.box(202,60,70,'文 ⇄')+
+  FG.txt(8,115,'調銭')+FG.inp(56,96,140,'6600.00',true)+FG.box(202,96,70,'文 ⇄')+
+  FG.arrow(100,126,100,158)+
+  FG.bub(112,129,204,['② 調銭の数を金相場へ'])+
+  FG.txt(8,179,'金相場')+FG.inp(56,160,140,'6600.00',true)+FG.box(202,160,70,'文/両 ⇄',true)+
+  FG.bub(36,200,280,['③ 必要に応じて、右のボタンで単位を替える','文/両 → 文/分 → 文/朱'],['up',237]),
+  '省銭の相場を省銭の欄に入れ、調銭の欄に出た数を金相場に入れる');
+
+/* 両替：銀相場の入れ方 */
+const FIG_GIN=FG.svg(110,
+  FG.txt(8,23,'銀相場')+FG.inp(56,4,140,'108.00')+FG.box(202,4,70,'文/匁 ⇄',true)+
+  FG.bub(48,44,268,['銀と銭だけの両替なら、右のボタンで','「文/匁」に合わせる','目/両 → 目/分 → 目/朱 → 文/匁'],['up',237]),
+  '銀と銭だけの両替では、銀相場の単位を文/匁に合わせる');
+
+/* 両替：金銀の両数から銭を知る */
+const FIG_KG=FG.svg(294,
+  FG.bub(120,4,196,['② 金は両・分・朱に、','　銀は匁に入れる'],['down',231])+
+  FG.box(4,77,100,'金銀→銭 ⇄',true)+
+  FG.txt(148,79,'金','dim')+
+  FG.inp(164,60,30,'1',true)+FG.txt(198,79,'両')+
+  FG.inp(216,60,30,'2',true)+FG.txt(250,79,'分')+
+  FG.inp(268,60,30,'0',true)+FG.txt(302,79,'朱')+
+  FG.txt(222,113,'銀','dim')+FG.inp(238,94,62,'4.5',true)+FG.txt(304,113,'匁')+
+  FG.bub(4,114,156,['永銭なら、ここを押して','「金(永)→銭」にする'],['up',54])+
+  FG.txt(8,189,'省銭')+FG.inp(56,170,150,'10800',true)+FG.box(212,170,60,'文 ⇄')+
+  FG.txt(8,223,'調銭')+FG.inp(56,204,150,'10368',true)+FG.box(212,204,60,'文 ⇄')+
+  FG.bub(4,246,312,['③ 省銭と調銭に銭の量が出る。','　省銭が実際の取引の額になる'],['up',131]),
+  '金銀→銭にして両・分・朱と匁を入れると、省銭と調銭に銭の量が出る');
+
+/* 本文中の {{語}} は押せる語となり、吹き出しで参照先を示す */
+const TERM_REF={'調銭':'省銭と調銭','省銭':'省銭と調銭'};
+
+/* 各項は [見出し, 本文（段落が複数なら配列）, {fig:図, sub:[[語,説明],…], steps:[{t:本文,fig:図},…], column:囲みのコラムにする}] */
+const HOWTO={
+  'sec-distance':{t:'尺度',i:[
+    ['入れ方','メートル・ヤードと、その下の尺の欄のどれに数を入れても、ほかの欄と上の三行が同時に変わります。'],
+    ['上の三行','入れた長さを、里法（曲尺）・丈法（鯨尺）・英法それぞれの単位に割って示します。'],
+    ['単位','各欄の右のボタンを押すたびに単位が移ります。'],
+    ['物差しの種類','単位が尺・寸のとき、左のボタンで物差しを替えられます。',{fig:FIG_SHAKU,sub:[
+      ['曲尺','江戸時代から明治時代まで盛んに使われた、基本的な長さの基準。建築や距離に用いる。'],
+      ['鯨尺','着物の採寸などに用いる。身丈・裄丈はこの物差しで測る。'],
+      ['呉服尺','呉服に用いる布を測る際に用いた物差し。明治八年の条例により廃止された。']
+    ]}],
+    ['間の種類','京間・畳・京畳に直すときは、二つの手順を踏みます。①右のボタンを押して、単位を「間」に合わせます。②左に「間」のボタンが出るので、押して京間・畳・京畳・間から選びます。',{fig:FIG_KEN}]
+  ]},
+  'sec-area':{t:'面積',i:[
+    ['入れ方','平米・英法・畝数の欄のどれに数を入れても、ほかの欄と上の二行が同時に変わります。'],
+    ['上の二行','入れた広さを、町法（町・反・畝・歩・分）と英法の単位に割って示します。'],
+    ['単位','各欄の右のボタンを押すたびに単位が移ります。'],
+    ['辺の長さから面積を求める','縦と横の長さから面積を求められます。①「計算」を開きます。②上の三つのボタンで、尺度・メートル法・英法から物差しを選びます。③縦と横に長さを入れ、右のボタンで単位を選びます。④求めた面積が上の欄に出ます。',{fig:FIG_CALC}]
+  ]},
+  'sec-angle':{t:'角度',i:[
+    ['二つの向き','左上のボタンで「度数→天宮」と「天宮→度数」を切り替えます。'],
+    ['度数→天宮','度数か弧度の欄に入れると、天・宮・度・分・秒に割って示します。一天は十二宮、一宮は三十度、一度は六十分、一分は六十秒です。'],
+    ['天宮→度数','天・宮・度・分・秒の欄に入れると、度数と弧度の欄に直します。'],
+    ['記号で入れる','①左上のボタンで「天宮→度数」にします。②度・分・秒のどの欄にでも、12°24′30″ や 12度24分30秒 と記号ごと入れます。③度・分・秒に振り分けられます。度数の欄に入れても同じく働きます。',{fig:FIG_DMS}],
+    ['三角法','開くと、正弦・余弦・正接とその常用対数を示します。どの欄に入れても、そこから角度を逆に求めます。']
+  ]},
+  'sec-volume':{t:'量',i:[
+    ['入れ方','ミリリットル・英法・量数の欄のどれに数を入れても、ほかの欄と上の二行が同時に変わります。'],
+    ['上の二行','入れた量を、石法（石・斗・升・合・勺・抄・撮）と英法の単位に割って示します。'],
+    ['単位','各欄の右のボタンを押すたびに単位が移ります。']
+  ]},
+  'sec-weight':{t:'重さ',i:[
+    ['入れ方','グラム・英法・下の欄のどれに数を入れても、ほかの欄と上の二行が同時に変わります。'],
+    ['上の二行','入れた重さを、衡法（貫・斤・両・匁・分・厘・毛）と英法の単位に割って示します。'],
+    ['単位','各欄の右のボタンを押すたびに単位が移ります。'],
+    ['三つの方式','下の欄の左のボタンで、斤量・衡数・斤量（現行）を切り替えます。斤量は一両を四匁、斤量（現行）は一両を十匁として数え、衡数は貫と匁だけで数えます。']
+  ]},
+  'sec-money':{t:'両替',i:[
+    ['四つの向き','左上のボタンで、銭→金銀・金銀→銭・金(永)→銭・銀→銭を切り替えます。'],
+    ['使用方法','両替のもとになる相場を、はじめに入れます。',{steps:[
+      {t:'金相場に、両替の相場を入れます。金相場は{{調銭}}で入れてください。相場が{{省銭}}で記載されている場合は、①まず省銭欄に価格を入れ、②調銭の欄に出た数を金相場に入れます。③必要に応じて、右のボタンで文/両・文/分・文/朱に切り替えられます。',fig:FIG_KIN},
+      {t:'銀相場に、両替の相場を入れます。銀と銭だけの両替のときは、右のボタンで「文/匁」に合わせます。文/匁が百文以上のときは、目銭四文を引いて計算しています。目/両・目/分・目/朱は、金相場の単位と連れ立って移ります。',fig:FIG_GIN}
+    ]}],
+    ['金銀から銭を知る','①金相場と銀相場を入れます。②左上のボタンを「金銀→銭」にし、上の欄の両・分・朱に数を入れます。銀も同様に匁へ入れます。永銭で取引するときは、同じボタンをもう一度押して「金(永)→銭」にします。永銭は一両を永千文とする十進の数え方です。③入れると、調銭と省銭の欄に銭の量が出ます。省銭が実際の取引の額になります。図は金相場6600文/両、銀相場108文/匁のときの例です。',{fig:FIG_KG}],
+    ['銭→金銀','省銭か調銭の欄に入れると、金（両・分・朱）と銀（匁）に割って示します。金を先に充て、残りを銀とします。'],
+    ['銀→銭','銀の匁だけから銭を求めます。'],
+    ['省銭と調銭',[
+      '九六銭の二つの数え方です。四文銭や二八蕎麦のように、何かと4の倍数にかかることが多かった江戸時代の商取引。古来の100文（銭差し一本分）という通用では不便でした。そこで、銭差し一本の銭枚数を100文から、4や16の倍数に値する96文にすることで、実際の商取引を円滑に行えるようにしました。それにより生じた、旧来の銭差し一本を基準とした勘定方法を「省銭」とし、銭差しに含まれる銭の実際量を基準にした方法を「調銭」としました。100文から96文へ、枚数を省いた銭勘定なので「省銭」、銭差しをバラして、実際の数を調べる銭勘定なので「調銭」。',
+      '一般的な通用は省銭で十分ですが、小さな変動も価格に影響をもたらすような取引の場合は、正確な銭枚数の勘定が必要になります。なので、そのうちの一つである金両替の計算は、「省銭」から「調銭」に換算しなければなりません。',
+      'およそ、時間の考え方が1時間＝60分（1分が60個集まって1時間という括り）のように、省銭100文＝調銭96文という認識がよいと考えます。'
+    ],{column:true}]
+  ]}
+};
+(function(){
+  const dlg=el('howto'), ttl=el('howtoTitle'), body=el('howtoBody');
+  const open=id=>{
+    const h=HOWTO[id]; if(!h) return;
+    ttl.textContent=h.t+'の使い方';
+    body.textContent='';
+    h.i.forEach(([k,v,opt])=>{
+      const dt=document.createElement('dt'); dt.textContent=k;
+      const dd=document.createElement('dd');
+      (Array.isArray(v)?v:[v]).forEach(t=>{ const pp=document.createElement('p'); rich(pp,t); dd.appendChild(pp); });
+      if(opt&&opt.fig){ const f=document.createElement('figure'); f.innerHTML=opt.fig; dd.appendChild(f); }
+      if(opt&&opt.steps){
+        const ol=document.createElement('ol'); ol.className='steps';
+        opt.steps.forEach(st=>{
+          const li=document.createElement('li');
+          const sp=document.createElement('p'); rich(sp,st.t); li.appendChild(sp);
+          if(st.fig){ const f=document.createElement('figure'); f.innerHTML=st.fig; li.appendChild(f); }
+          ol.appendChild(li);
+        });
+        dd.appendChild(ol);
+      }
+      if(opt&&opt.sub){
+        const sl=document.createElement('dl'); sl.className='sub';
+        opt.sub.forEach(([sk,sv])=>{
+          const sdt=document.createElement('dt'); sdt.textContent=sk;
+          const sdd=document.createElement('dd'); sdd.textContent=sv;
+          sl.appendChild(sdt); sl.appendChild(sdd);
+        });
+        dd.appendChild(sl);
+      }
+      if(opt&&opt.column){
+        const box=document.createElement('div'); box.className='colBox';
+        box.appendChild(dt); box.appendChild(dd); body.appendChild(box);
+      } else { body.appendChild(dt); body.appendChild(dd); }
+    });
+    body.scrollTop=0;
+    if(dlg.showModal) dlg.showModal(); else dlg.setAttribute('open','');
+  };
+  /* 本文を組む。{{語}} は押せる語にする */
+  const rich=(elm,text)=>{
+    text.split(/(\{\{[^}]+\}\})/).forEach(part=>{
+      const m=/^\{\{([^}]+)\}\}$/.exec(part);
+      if(!m){ if(part) elm.appendChild(document.createTextNode(part)); return; }
+      const t=document.createElement('span');
+      t.className='term'; t.textContent=m[1];
+      t.setAttribute('role','button'); t.tabIndex=0;
+      t.dataset.ref=TERM_REF[m[1]]||m[1];
+      elm.appendChild(t);
+    });
+  };
+  /* 語の吹き出し。押すと参照先へ送る */
+  const pop=document.createElement('div'); pop.className='termPop'; pop.setAttribute('role','button'); pop.tabIndex=0;
+  let popFor=null;   // 今吹き出しを出している語
+  const hidePop=()=>{ pop.classList.remove('on'); popFor=null; };
+  const showPop=term=>{
+    const ref=term.dataset.ref;
+    pop.textContent='「'+ref+'」を参照'; pop.dataset.ref=ref;
+    body.appendChild(pop); pop.classList.add('on'); popFor=term;
+    const pw=pop.offsetWidth, bw=body.clientWidth;
+    const cx=term.offsetLeft+term.offsetWidth/2;
+    const left=Math.max(4,Math.min(cx-pw/2, bw-pw-4));
+    pop.style.left=left+'px';
+    pop.style.top=(term.offsetTop+term.offsetHeight+9)+'px';
+    pop.style.setProperty('--tx',(cx-left)+'px');
+  };
+  const jump=ref=>{
+    hidePop();
+    const dt=[...body.querySelectorAll('dt')].find(e=>e.textContent===ref);
+    if(dt) dt.scrollIntoView({behavior:'smooth',block:'start'});
+  };
+  body.addEventListener('click',e=>{
+    const t=e.target.closest('.term');
+    if(t){ popFor===t ? hidePop() : showPop(t); return; }   // 同じ語をもう一度押せば閉じる
+    if(e.target.closest('.termPop')){ jump(pop.dataset.ref); return; }
+    hidePop();
+  });
+  body.addEventListener('keydown',e=>{
+    if(e.key!=='Enter'&&e.key!==' ') return;
+    const t=e.target.closest('.term');
+    if(t){ e.preventDefault(); showPop(t); return; }
+    if(e.target.closest('.termPop')){ e.preventDefault(); jump(pop.dataset.ref); }
+  });
+  const close=()=>{ hidePop(); if(dlg.close) dlg.close(); else dlg.removeAttribute('open'); };
+  dlg.querySelector('.hClose').addEventListener('click',close);
+  dlg.addEventListener('click',e=>{ if(e.target===dlg) close(); });   // 外側を押せば閉じる
+  document.querySelectorAll('.card[id]').forEach(card=>{
+    if(!HOWTO[card.id]) return;
+    const b=document.createElement('button');
+    b.type='button'; b.className='helpBtn'; b.textContent='？';
+    b.setAttribute('aria-label',HOWTO[card.id].t+'の使い方');
+    b.addEventListener('click',()=>open(card.id));
+    card.appendChild(b);
+  });
+})();
 
 /* ---------- ウェブアプリ：Service Worker の登録（圏外でも開けるように） ---------- */
 if('serviceWorker' in navigator){
