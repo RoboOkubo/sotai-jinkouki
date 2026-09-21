@@ -12,8 +12,17 @@
 <meta property="og:description" content="尺貫法とヤード・ポンド法を行き来する単位換算。九六銭の両替と、天宮の角度を収める。">
 <meta property="og:url" content="https://robookubo.github.io/sotai-jinkouki/">
 <meta property="og:locale" content="ja_JP">
+<meta property="og:image" content="https://robookubo.github.io/sotai-jinkouki/icons/icon-512.png">
 <meta name="twitter:card" content="summary">
 <link rel="canonical" href="https://robookubo.github.io/sotai-jinkouki/">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icons/favicon.ico" sizes="48x48">
+<link rel="icon" href="icons/favicon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<meta name="apple-mobile-web-app-title" content="携帯塵劫記">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black">
 <style>
 :root{
   --ink:#0f131c; --ink2:#161b27; --ink3:#1d2433;
@@ -1405,6 +1414,11 @@ buildAreaCalcSection();
 buildAngleCard();
 buildTrigSection();
 buildMoneyCard();
+
+/* ---------- ウェブアプリ：Service Worker の登録（圏外でも開けるように） ---------- */
+if('serviceWorker' in navigator){
+  window.addEventListener('load',()=>{ navigator.serviceWorker.register('sw.js').catch(()=>{}); });
+}
 </script>
 </body>
 </html>
