@@ -725,30 +725,52 @@ function choToSho(cho){
   return n*100+(c-n*96);
 }
 
-const MONEY_MODE_SEQ=['cho','gin'];
-const MONEY_MODE_LABEL={cho:'銭→金銀',gin:'金銀→銭'};
+const MONEY_MODE_SEQ=['cho','gin','ei','gn'];
+const MONEY_MODE_LABEL={cho:'銭→金銀',gin:'金銀→銭',ei:'金(永)→銭',gn:'銀→銭'};
+const EI_RYO=1000;   // 永高は金の数量を十進に刻むもの。金一両＝永千文
 let moneyMode='cho';
 let kinRate=1000;   // 文/両
 let ginRate=60;     // 目/両（金一両に換わる銀の目方）
 /* 金相場の分母：kinRateは常に文/両で保持し、表示時のみ分・朱に換算する */
 const KIN_DEN_SEQ=['ryo','bu','shu'];
 const KIN_DEN_LABEL={ryo:'文/両',bu:'文/分',shu:'文/朱'};
-const GIN_DEN_LABEL={ryo:'目/両',bu:'目/分',shu:'目/朱'};
+const GIN_DEN_LABEL={ryo:'目/両',bu:'目/分',shu:'目/朱',mon:'文/匁'};
 const KIN_DEN_F={ryo:1, bu:4, shu:16};   // 表示値×この数＝文/両
 let kinDen='ryo';
 
+/* ---------- 銀相場の二法 ----------
+   目/両  … 金一両に換わる銀の目方。金相場の分母と連なる。
+   文/匁  … 銀一匁の代銭。百文以上なれば目銭四文を引きて調銭の相場とす。
+   いずれで打ちても、計は「銀一匁あたりの調銭」に帰す。 */
+const GIN_DEN_SEQ=['ryo','bu','shu','mon'];
+let ginDen='ryo';
+let ginBasis='ryo';    // 後に打たれたる方を拠り所とす
+let ginMonRaw=110;     // 文/匁（目銭を引く前、打たれたるまま）
+const mezeni=raw=>(raw>=100 ? raw-4 : raw);          // 百文以上に目銭四文
+function ginChoPerMonme(){                            // 銀一匁あたりの調銭
+  return ginBasis==='mon' ? mezeni(ginMonRaw) : (kinRate/ginRate);
+}
+function ginRyoPerRyo(){                              // 目/両
+  return ginBasis==='ryo' ? ginRate : (kinRate/mezeni(ginMonRaw));
+}
+function ginMonShow(){                                // 文/匁の表示（目銭を戻す）
+  if(ginBasis==='mon') return ginMonRaw;
+  const c=kinRate/ginRate;
+  return c>=96 ? c+4 : c;
+}
+
 const R6=x=>Math.round(x*1e6)/1e6;
-function choToKingin(cho,kRate,gRate){
+function choToKingin(cho,kRate,ginCho){
   let r=R6(cho);
   const ryo=Math.floor(R6(r/kRate));        r=R6(r-ryo*kRate);
   const bu =Math.floor(R6(r/(kRate/4)));    r=R6(r-bu*(kRate/4));
   const shu=Math.floor(R6(r/(kRate/16)));   r=R6(r-shu*(kRate/16));
-  const ginM=r/(kRate/gRate);   // 銀1匁＝kRate/gRate 文
+  const ginM=r/ginCho;          // ginCho＝銀一匁あたりの調銭
   return {ryo,bu,shu,ginM,remainder:r};
 }
 const gin2=v=>(Math.floor(Math.round(v*1e6)/1e6*100)/100).toFixed(2);   // 銀の内訳表示は厘まで（3桁目以降は切り捨て）
-function choText(cho,kRate,gRate){
-  const {ryo,bu,shu,ginM,remainder}=choToKingin(cho,kRate,gRate);
+function choText(cho,kRate,ginCho){
+  const {ryo,bu,shu,ginM,remainder}=choToKingin(cho,kRate,ginCho);
   const kinPart=(ryo?ryo+'両':'')+(bu?bu+'分':'')+(shu?shu+'朱':'');
   const ginPart=(remainder!==0)?'銀'+gin2(ginM)+'匁':'';
   return (!kinPart&&!ginPart) ? '銀0匁'
@@ -767,6 +789,8 @@ function buildMoneyCard(){
     const i=MONEY_MODE_SEQ.indexOf(moneyMode);
     moneyMode=MONEY_MODE_SEQ[(i+1)%MONEY_MODE_SEQ.length];
     if(moneyMode==='gin') refreshGinFields();
+    if(moneyMode==='ei')  refreshEiFields();
+    if(moneyMode==='gn')  refreshGnFields();
     updateMoneyCard();
   });
   const midCell=document.createElement('span'); midCell.className='moneyMid';
@@ -790,14 +814,63 @@ function buildMoneyCard(){
   const buInput=kinginSlot(kinLine,'分',true);
   const shuInput=kinginSlot(kinLine,'朱',true);
   const ginInput=kinginSlot(ginLine,'匁',false);
+
+  /* 永高の欄：金は両と文（十進）、銀は匁 */
+  const eiRow=document.createElement('div'); eiRow.className='kinginRow';
+  function eiLine(nameChar){
+    const line=document.createElement('div'); line.className='kinginLine';
+    const nm=document.createElement('span'); nm.className='kinginName'; nm.textContent=nameChar;
+    line.appendChild(nm); eiRow.appendChild(line);
+    return line;
+  }
+  function eiSlot(line,unitChar,isInt){
+    const input=document.createElement('input'); input.type='number'; input.step=isInt?'1':'any';
+    input.className='miniInput'+(isInt?'':' ginInput');
+    const label=document.createElement('span'); label.className='label'; label.textContent=unitChar;
+    line.appendChild(input); line.appendChild(label);
+    return input;
+  }
+  const eiKinLine=eiLine('金'), eiGinLine=eiLine('銀');
+  const eiRyoInput=eiSlot(eiKinLine,'両',true);
+  const eiMonInput=eiSlot(eiKinLine,'文',true);
+  const eiGinInput=eiSlot(eiGinLine,'匁',false);
+
+  /* 銀のみの欄：匁 */
+  const gnRow=document.createElement('div'); gnRow.className='kinginRow';
+  const gnLine=document.createElement('div'); gnLine.className='kinginLine';
+  const gnName=document.createElement('span'); gnName.className='kinginName'; gnName.textContent='銀';
+  gnLine.appendChild(gnName); gnRow.appendChild(gnLine);
+  const gnMonmeInput=document.createElement('input');
+  gnMonmeInput.type='number'; gnMonmeInput.step='any'; gnMonmeInput.className='miniInput ginInput';
+  const gnMonmeLabel=document.createElement('span'); gnMonmeLabel.className='label'; gnMonmeLabel.textContent='匁';
+  gnLine.appendChild(gnMonmeInput); gnLine.appendChild(gnMonmeLabel);
+
   midCell.appendChild(readout); midCell.appendChild(kinginRow);
+  midCell.appendChild(eiRow); midCell.appendChild(gnRow);
   row1.appendChild(modeBtn); row1.appendChild(midCell);
   container.appendChild(row1);
+
+  const onEiInput=()=>{
+    const val=inp=>{ const v=parseFloat(inp.value); return isFinite(v)?v:0; };
+    /* 永高は金の数量ゆえ、まず両に直し、金相場を掛けて銭とする */
+    const kinRyo=val(eiRyoInput) + val(eiMonInput)/EI_RYO;
+    const cho2=Math.round(kinRyo*kinRate + val(eiGinInput)*ginChoPerMonme());
+    values.money=choToSho(cho2);
+    updateMoneyCard();
+  };
+  [eiRyoInput,eiMonInput,eiGinInput].forEach(i=>i.addEventListener('input',onEiInput));
+
+  const onGnInput=()=>{
+    const v=parseFloat(gnMonmeInput.value);
+    values.money=choToSho(Math.round((isFinite(v)?v:0)*ginChoPerMonme()));
+    updateMoneyCard();
+  };
+  gnMonmeInput.addEventListener('input',onGnInput);
 
   const onKinginInput=()=>{
     const val=inp=>{ const v=parseFloat(inp.value); return isFinite(v)?v:0; };
     const ryo=val(ryoInput), bu=val(buInput), shu=val(shuInput), gin=val(ginInput);
-    const cho2=Math.round(ryo*kinRate+bu*(kinRate/4)+shu*(kinRate/16)+gin*(kinRate/ginRate));
+    const cho2=Math.round(ryo*kinRate+bu*(kinRate/4)+shu*(kinRate/16)+gin*ginChoPerMonme());
     values.money=choToSho(cho2);
     updateMoneyCard();
   };
@@ -852,13 +925,14 @@ function buildMoneyCard(){
   kinUnitBtn.addEventListener('click',()=>{
     const i=KIN_DEN_SEQ.indexOf(kinDen);
     kinDen=KIN_DEN_SEQ[(i+1)%KIN_DEN_SEQ.length];
+    if(ginDen!=='mon') ginDen=kinDen;      // 銀が目/◯のときは連れ添う
     updateMoneyCard();
   });
   row4.appendChild(label4); row4.appendChild(kinInput); row4.appendChild(kinUnitBtn);
   container.appendChild(row4);
   kinInput.addEventListener('input',()=>{
     const v=parseFloat(kinInput.value);
-    if(isFinite(v)&&v>0){ kinRate=v*KIN_DEN_F[kinDen]; if(moneyMode==='gin') refreshGinFields(); }
+    if(isFinite(v)&&v>0){ kinRate=v*KIN_DEN_F[kinDen]; if(moneyMode==='gin') refreshGinFields(); if(moneyMode==='ei') refreshEiFields(); if(moneyMode==='gn') refreshGnFields(); }
     updateMoneyCard();
   });
 
@@ -867,19 +941,26 @@ function buildMoneyCard(){
   const ginRateInput=document.createElement('input'); ginRateInput.type='number'; ginRateInput.step='any'; ginRateInput.value='60';
   const ginUnitBtn=document.createElement('button'); ginUnitBtn.type='button'; ginUnitBtn.className='cycleBtn';
   ginUnitBtn.addEventListener('click',()=>{
-    const i=KIN_DEN_SEQ.indexOf(kinDen);
-    kinDen=KIN_DEN_SEQ[(i+1)%KIN_DEN_SEQ.length];
+    const i=GIN_DEN_SEQ.indexOf(ginDen);
+    ginDen=GIN_DEN_SEQ[(i+1)%GIN_DEN_SEQ.length];
+    if(ginDen!=='mon') kinDen=ginDen;      // 目/◯に戻れば金相場も連れ添う
     updateMoneyCard();
   });
   row5.appendChild(label5); row5.appendChild(ginRateInput); row5.appendChild(ginUnitBtn);
   container.appendChild(row5);
   ginRateInput.addEventListener('input',()=>{
     const v=parseFloat(ginRateInput.value);
-    if(isFinite(v)&&v>0){ ginRate=v*KIN_DEN_F[kinDen]; if(moneyMode==='gin') refreshGinFields(); }
+    if(isFinite(v)&&v>0){
+      if(ginDen==='mon'){ ginMonRaw=v; ginBasis='mon'; }
+      else { ginRate=v*KIN_DEN_F[ginDen]; ginBasis='ryo'; }
+      if(moneyMode==='gin') refreshGinFields();
+      if(moneyMode==='ei')  refreshEiFields();
+      if(moneyMode==='gn')  refreshGnFields();
+    }
     updateMoneyCard();
   });
 
-  moneyEls={modeBtn,readout,kinginRow,ryoInput,buInput,shuInput,ginInput,input,unitBtn,choInput,choBtn,kinInput,kinUnitBtn,ginRateInput,ginUnitBtn};
+  moneyEls={modeBtn,readout,kinginRow,ryoInput,buInput,shuInput,ginInput,eiRow,eiRyoInput,eiMonInput,eiGinInput,gnRow,gnMonmeInput,input,unitBtn,choInput,choBtn,kinInput,kinUnitBtn,ginRateInput,ginUnitBtn};
   refreshGinFields();
   updateMoneyCard();
 }
@@ -888,11 +969,27 @@ function buildMoneyCard(){
 // （4欄そのものの編集時はonKinginInputがvalues.moneyを更新するのみで、4欄自体は書き換えない）
 function refreshGinFields(){
   const cho=shoToCho(values.money);
-  const {ryo,bu,shu,ginM}=choToKingin(cho,kinRate,ginRate);
+  const {ryo,bu,shu,ginM}=choToKingin(cho,kinRate,ginChoPerMonme());
   moneyEls.ryoInput.value=String(ryo);
   moneyEls.buInput.value=String(bu);
   moneyEls.shuInput.value=String(shu);
   moneyEls.ginInput.value=fmt(ginM);
+}
+
+/* 永高の欄を書き戻す。銭を金相場で両に直し、十進に刻む。銀は零とする */
+function refreshEiFields(){
+  const cho=shoToCho(values.money);
+  const kinRyo=cho/kinRate;                       // 金の数量（両）
+  const ei=Math.round(kinRyo*EI_RYO);             // 永文に直す
+  const ryo=Math.floor(ei/EI_RYO);
+  moneyEls.eiRyoInput.value=String(ryo);
+  moneyEls.eiMonInput.value=String(ei-ryo*EI_RYO);
+  moneyEls.eiGinInput.value='0';
+}
+
+/* 銀のみの欄を書き戻す。銭を銀相場で匁に直す */
+function refreshGnFields(){
+  moneyEls.gnMonmeInput.value=fmt(shoToCho(values.money)/ginChoPerMonme());
 }
 
 function updateMoneyCard(){
@@ -902,10 +999,14 @@ function updateMoneyCard(){
 
   moneyEls.modeBtn.textContent = MONEY_MODE_LABEL[moneyMode]+' ⇄';
   const isGin = moneyMode==='gin';
-  moneyEls.readout.style.display = isGin ? 'none' : '';
+  const isEi  = moneyMode==='ei';
+  const isGn  = moneyMode==='gn';
+  moneyEls.readout.style.display   = (isGin||isEi||isGn) ? 'none' : '';
   moneyEls.kinginRow.style.display = isGin ? '' : 'none';
+  moneyEls.eiRow.style.display     = isEi  ? '' : 'none';
+  moneyEls.gnRow.style.display     = isGn  ? '' : 'none';
 
-  if(!isGin) moneyEls.readout.textContent = choText(cho,kinRate,ginRate);
+  if(!isGin&&!isEi&&!isGn) moneyEls.readout.textContent = choText(cho,kinRate,ginChoPerMonme());
 
   if(active!==moneyEls.input) moneyEls.input.value=fmt(base/ZENI_F[zeniUnit]);
   moneyEls.unitBtn.textContent = ZENI_LABEL[zeniUnit]+' ⇄';
@@ -915,8 +1016,12 @@ function updateMoneyCard(){
 
   if(active!==moneyEls.kinInput) moneyEls.kinInput.value=fmt(kinRate/KIN_DEN_F[kinDen]);
   moneyEls.kinUnitBtn.textContent=KIN_DEN_LABEL[kinDen]+' ⇄';
-  if(active!==moneyEls.ginRateInput) moneyEls.ginRateInput.value=fmt(ginRate/KIN_DEN_F[kinDen]);
-  moneyEls.ginUnitBtn.textContent=GIN_DEN_LABEL[kinDen]+' ⇄';
+  if(active!==moneyEls.ginRateInput){
+    moneyEls.ginRateInput.value = (ginDen==='mon')
+      ? fmt(ginMonShow())
+      : fmt(ginRyoPerRyo()/KIN_DEN_F[ginDen]);
+  }
+  moneyEls.ginUnitBtn.textContent=GIN_DEN_LABEL[ginDen]+' ⇄';
 }
 
 /* ---------- 面積カードの計算欄（縦・横から面積を求め、他行へ反映） ---------- */
@@ -1065,7 +1170,7 @@ function buildAngleCard(){
   }
   function tkSlot(line,unitChar,isInt,isDMS){
     const input=document.createElement('input');
-    if(isDMS){ input.type='text'; input.inputMode='decimal'; }
+    if(isDMS){ input.type='text'; }   // 記号を打てるよう鍵盤を限らぬ
     else { input.type='number'; input.step=isInt?'1':'any'; }
     input.className='miniInput'+(isInt?'':' ginInput');
     const label=document.createElement('span'); label.className='label'; label.textContent=unitChar;
@@ -1086,39 +1191,38 @@ function buildAngleCard(){
     const g=/-?\d+(?:\.\d+)?/.exec(String(inp.value));
     return g?parseFloat(g[0]):0;
   };
-  const recalc=src=>{
-    /* 記号入りの欄は、その欄だけで度分秒すべてを表すものとみなす */
-    if(src && DMS_MARK.test(src.value)){
-      const p=parseDMS(src.value);
-      if(p){
-        values.angle = val(tenInput)*360 + val(kyuInput)*30 + p.d + p.m/60 + p.s/3600;
-        updateAngleCard();
-        return;
-      }
-    }
+  const recalc=()=>{
     values.angle = val(tenInput)*360 + val(kyuInput)*30 + val(doInput)
                  + val(funInput)/60 + val(byoInput)/3600;
     updateAngleCard();
   };
-  /* 記号入りの値を度・分・秒の三欄へ振り分ける */
-  const spread=src=>{
-    if(!DMS_MARK.test(src.value)) return;
+  /* 記号入りの値を度・分・秒の三欄へ振り分ける。
+     打ち込んでいる最中の欄は触れぬ（字が消え、筆先が飛ぶゆえ）。
+     done を立てたるときは、その欄も整える。 */
+  const spread=(src,done)=>{
+    if(!DMS_MARK.test(src.value)) return false;
     const p=parseDMS(src.value);
-    if(!p) return;
-    doInput.value=p.d; funInput.value=p.m; byoInput.value=p.s;
-    recalc(null);
+    if(!p) return false;
+    if(done||src!==doInput ) doInput.value =p.d;
+    if(done||src!==funInput) funInput.value=p.m;
+    if(done||src!==byoInput) byoInput.value=p.s;
+    values.angle = val(tenInput)*360 + val(kyuInput)*30 + p.d + p.m/60 + p.s/3600;
+    updateAngleCard();
+    return true;
   };
-  [tenInput,kyuInput,doInput,funInput,byoInput].forEach(i=>{
-    i.addEventListener('input',()=>recalc(i));
+  [tenInput,kyuInput].forEach(i=>i.addEventListener('input',recalc));
+  [doInput,funInput,byoInput].forEach(i=>{
+    i.addEventListener('input',()=>{ if(!spread(i,false)) recalc(); });
   });
   [doInput,funInput,byoInput].forEach(i=>{
-    i.addEventListener('change',()=>spread(i));                    // 確定時（入力欄を離れる・改行）
-    i.addEventListener('paste',()=>setTimeout(()=>spread(i),0));   // 貼り付けは即座に
+    i.addEventListener('change',()=>spread(i,true));
+    i.addEventListener('blur',  ()=>spread(i,true));
+    i.addEventListener('paste', ()=>setTimeout(()=>spread(i,false),0));
   });
 
   const row2=document.createElement('div'); row2.className='row';
   const label2=document.createElement('span'); label2.className='label distLeft'; label2.textContent='度数';
-  const degInput=document.createElement('input'); degInput.type='number'; degInput.step='any';
+  const degInput=document.createElement('input'); degInput.type='text';
   const degBtn=document.createElement('button'); degBtn.type='button'; degBtn.className='cycleBtn';
   degBtn.addEventListener('click',()=>{
     const i=DEG_SEQ.indexOf(degUnit);
@@ -1128,11 +1232,28 @@ function buildAngleCard(){
   row2.appendChild(label2); row2.appendChild(degInput); row2.appendChild(degBtn);
   container.appendChild(row2);
   degInput.addEventListener('input',()=>{
-    const v=parseFloat(degInput.value);
+    if(DMS_MARK.test(degInput.value)){
+      /* 記号入りは角の総量を表すゆえ、単位の別を問わず度として受ける */
+      const p=parseDMS(degInput.value);
+      if(p){
+        values.angle = p.d + p.m/60 + p.s/3600;
+        if(angleMode==='edit') refreshAngleFields();
+        updateAngleCard();
+        return;
+      }
+    }
+    const g=/-?\d+(?:\.\d+)?/.exec(degInput.value);
+    const v=g?parseFloat(g[0]):NaN;
     if(isFinite(v)&&v>0) values.angle=v*DEG_F[degUnit];
     if(angleMode==='edit') refreshAngleFields();
     updateAngleCard();
   });
+  const degFinish=()=>{
+    if(!DMS_MARK.test(degInput.value)) return;
+    if(parseDMS(degInput.value)) updateAngleCard();   // 整った数に書き戻す
+  };
+  degInput.addEventListener('change',degFinish);
+  degInput.addEventListener('blur',degFinish);
 
   const row3=document.createElement('div'); row3.className='row';
   const label3=document.createElement('span'); label3.className='label distLeft'; label3.textContent='弧度';
